@@ -13,24 +13,19 @@ namespace Bobert
 
         public Bot()
         {
-            cmds = client.GetService<CommandService>();
-
             client = new DiscordClient(input =>
             {
                 input.LogLevel = LogSeverity.Info;
                 input.LogHandler = Log;
             });
-
+            
             client.UsingCommands(input =>
             {
                 input.PrefixChar = prefix;
                 input.AllowMentionPrefix = true;
             });
-
-            client.UsingAudio(input =>
-            {
-                input.Mode = AudioMode.Outgoing;
-            });
+            
+            cmds = client.GetService<CommandService>();
 
             cmds.CreateCommand("herro").Do(async (e) =>
             {
