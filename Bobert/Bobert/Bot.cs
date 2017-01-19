@@ -32,7 +32,7 @@ namespace Bobert
                 await e.Channel.SendMessage("World!");
             });
 
-            client.ExecuteAndWait(async () => { await client.Connect("G70XExJESX0TEREgYw1ynPVtTwv08g2V", TokenType.Bot); });
+            client.ExecuteAndWait(async () => { await client.Connect("MjcxNjk3OTA1NzIxNTQwNjA5.C2KYcA.wDKEh-OWHTw0XazldDs_dYniMSA", TokenType.Bot); });
         }
 
         private void Log(object sender, LogMessageEventArgs e)
