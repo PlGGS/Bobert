@@ -6,7 +6,7 @@ using YoutubeSearch;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-using System.Threading;
+using System.IO;
 
 namespace Bobert
 {
@@ -14,9 +14,8 @@ namespace Bobert
     {
         DiscordClient client;
         CommandService cmds;
-        IAudioClient vClient;
-
-
+        string serverName;
+        string channelName;
         VideoSearch items = new VideoSearch();
         List<VideoInformation> list = new List<VideoInformation>();
         
@@ -34,13 +33,14 @@ namespace Bobert
                 input.AllowMentionPrefix = true;
             });
 
-            cmds = client.GetService<CommandService>();
-
             client.UsingAudio(x =>
             {
                 x.Mode = AudioMode.Outgoing;
+                x.Channels = 2;
             });
-            
+
+            cmds = client.GetService<CommandService>();
+
             cmds.CreateCommand("herro").Do(async (e) =>
             {
                 await e.Channel.SendMessage("World!");
@@ -54,7 +54,7 @@ namespace Bobert
                         .Alias(new string[] { "yt", "y" })
                         .Description("Plays a YouTube video's audio.")
                         .Parameter("videoName", ParameterType.Required)
-                        .Do(async e =>
+                        .Do( e =>
                         {
                             foreach (char element in e.GetArg("videoName"))
                             {
@@ -68,11 +68,12 @@ namespace Bobert
                             {
                                 videoQuery = e.GetArg("videoName");
                             }
+
+                            serverName = e.User.Server.Name;
+                            channelName = e.User.VoiceChannel.Name;
                             
-                            await e.Channel.SendMessage($"{e.User.Name} played the YouTube video: {videoQuery}");
-                            var _vClient = client.GetService<AudioService>().Join(client.FindServers(e.User.VoiceChannel.ToString()).FirstOrDefault().VoiceChannels.FirstOrDefault());
-                            
-                            //play audio n' shit
+                            e.Channel.SendMessage($"{e.User.Name} played the YouTube video: {videoQuery}");
+                            SendAudio("C:\\Eff.mp3");
                         });
 
                 cgb.CreateCommand("spotify")
@@ -93,8 +94,10 @@ namespace Bobert
             Console.WriteLine(e.Message);
         }
 
-        public void SendAudio(string pathOrUrl)
+        public async void SendAudio(string pathOrUrl)
         {
+            var vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
+
             var process = Process.Start(new ProcessStartInfo
             { // FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                 FileName = "ffmpeg",
@@ -103,7 +106,7 @@ namespace Bobert
                 UseShellExecute = false,
                 RedirectStandardOutput = true // Capture the stdout of the process
             });
-            Thread.Sleep(2000); // Sleep for a few seconds to FFmpeg can start processing data.
+            System.Threading.Thread.Sleep(2000); // Sleep for a few seconds to FFmpeg can start processing data.
 
             int blockSize = 3840; // The size of bytes to read per frame; 1920 for mono
             byte[] buffer = new byte[blockSize];
@@ -117,9 +120,10 @@ namespace Bobert
                 if (byteCount == 0) // FFmpeg did not output anything
                     break; // Break out of the while(true) loop, since there was nothing to read.
 
-                audioClient.Send(buffer, 0, byteCount); // Send our data to Discord
+                vClient.Send(buffer, 0, byteCount); // Send our data to Discord
             }
-            IAudioClient.Wait(); // Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
+            vClient.Wait(); // Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
+            await vClient.Disconnect();
         }
     }
 }
