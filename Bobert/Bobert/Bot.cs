@@ -15,8 +15,8 @@ namespace Bobert
         CommandService cmds;
         string serverName;
         string channelName;
-        VideoSearch items = new VideoSearch();
-        List<VideoInformation> list = new List<VideoInformation>();
+        VideoSearch videoSearchItems = new VideoSearch();
+        VideoInformation firstResult = new VideoInformation();
         
         public Bot()
         {
@@ -72,7 +72,7 @@ namespace Bobert
                             channelName = e.User.VoiceChannel.Name;
                             
                             e.Channel.SendMessage($"{e.User.Name} played the YouTube video: {videoQuery}");
-                            SendAudio("C:\\Eff.mp3");
+                            SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url);
                         });
 
                 cgb.CreateCommand("spotify")
