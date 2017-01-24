@@ -6,6 +6,7 @@ using YoutubeSearch;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using SpotifyAPI;
 
 namespace Bobert
 {
@@ -78,10 +79,27 @@ namespace Bobert
                 cgb.CreateCommand("spotify")
                         .Alias(new string[] { "sp", "s" })
                         .Description("Plays a song from Spotify.")
-                        .Parameter("GreetedPerson", ParameterType.Required)
-                        .Do(async e =>
+                        .Parameter("songName", ParameterType.Required)
+                        .Do( e =>
                         {
-                            await e.Channel.SendMessage($"{e.User.Name} says goodbye to {e.GetArg("GreetedPerson")}");
+                            foreach (char element in e.GetArg("songName"))
+                            {
+                                if (element == '_')
+                                {
+                                    videoQuery = e.GetArg("songName").ToString().Replace('_', ' ');
+                                }
+                            }
+
+                            if (!videoQuery.Contains(" "))
+                            {
+                                videoQuery = e.GetArg("songName");
+                            }
+
+                            serverName = e.User.Server.Name;
+                            channelName = e.User.VoiceChannel.Name;
+
+                            e.Channel.SendMessage($"{e.User.Name} played the Spotify song: {videoQuery}");
+                            SendAudio("");
                         });
             });
 
