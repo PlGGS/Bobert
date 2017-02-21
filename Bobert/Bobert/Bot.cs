@@ -82,6 +82,7 @@ namespace Bobert
                             //TODO add a command that allows the user to view a list of all playable songs
                             //TODO add a command that allows the user to change the volume of the bot
                             //TODO install dropbox and teamviewer on the $8 PC for use of Pinhead on there
+                            //TODO remove yt and spotify parts of commands and maybe remove youtubesearch.dll from references
 
                         });
 
