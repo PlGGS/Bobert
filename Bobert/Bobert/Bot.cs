@@ -18,7 +18,9 @@ namespace Bobert
         string channelName;
         VideoSearch videoSearchItems = new VideoSearch();
         VideoInformation firstResult = new VideoInformation();
-        
+        string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+
+
         public Bot()
         {
             client = new DiscordClient(input =>
@@ -73,7 +75,14 @@ namespace Bobert
                             channelName = e.User.VoiceChannel.Name;
                             
                             e.Channel.SendMessage($"{e.User.Name} played the YouTube video: {videoQuery}");
-                            SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url);
+                            //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
+                            SendAudio(audioPath + e.GetArg("videoName")); //This doesn't work
+                            
+                            //TODO send the audio of the song that is searched for with the proper file ending
+                            //TODO add a command that allows the user to view a list of all playable songs
+                            //TODO add a command that allows the user to change the volume of the bot
+                            //TODO install dropbox and teamviewer on the $8 PC for use of Pinhead on there
+
                         });
 
                 cgb.CreateCommand("spotify")
