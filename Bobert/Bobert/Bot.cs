@@ -65,20 +65,15 @@ namespace Bobert
                             }
 
                             audioQuery = e.GetArg("fileName").ToString();
+                            audioFiles = Directory.GetFiles(audioPath);
+                            fileNames = Directory.GetFiles(audioPath);
+                            fileTypes = Directory.GetFiles(audioPath);
 
                             for (int i = 0; i < Directory.GetFiles(audioPath).Length; i++)
                             {
-                                audioFiles = Directory.GetFiles(audioPath);
-                                fileNames = Directory.GetFiles(audioPath);
-                                fileTypes = Directory.GetFiles(audioPath);
-
                                 fileNames[i] = audioFiles[i].Substring(audioPath.Length, audioFiles[i].Substring(audioPath.Length - 1).Length - 1);
                                 fileTypes[i] = audioFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
                                 fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
-
-                                e.Channel.SendMessage(audioFiles[i]);
-                                e.Channel.SendMessage(fileNames[i]);
-                                e.Channel.SendMessage(fileTypes[i]);
                             }
 
                             int fileTypeIndex = -1;
@@ -105,6 +100,7 @@ namespace Bobert
 
                             SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
 
+                            //TODO figure out why the arrays are being set as the full strings
                             //TODO send the audio of the song that is searched for with the proper file ending
                             //TODO add a command that allows the user to view a list of all playable songs
                             //TODO add a command that allows the user to change the volume of the bot
