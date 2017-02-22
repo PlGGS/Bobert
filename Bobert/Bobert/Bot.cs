@@ -3,10 +3,10 @@ using Discord;
 using Discord.Commands;
 using Discord.Audio;
 using YoutubeSearch;
-using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-using SpotifyAPI;
+using System.IO;
+using System.Collections;
 
 namespace Bobert
 {
@@ -16,9 +16,11 @@ namespace Bobert
         CommandService cmds;
         string serverName;
         string channelName;
-        VideoSearch videoSearchItems = new VideoSearch();
-        VideoInformation firstResult = new VideoInformation();
-        string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        string audioQuery;
+        string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
+        string[] fileNames = Directory.GetFiles(audioPath); //file name
+        string[] fileTypes = Directory.GetFiles(audioPath); //file type
 
 
         public Bot()
@@ -31,7 +33,7 @@ namespace Bobert
             
             client.UsingCommands(input =>
             {
-                input.PrefixChar = '\\';
+                input.PrefixChar = '/';
                 input.AllowMentionPrefix = true;
             });
 
@@ -47,37 +49,62 @@ namespace Bobert
             {
                 await e.Channel.SendMessage("World!");
             });
-            
-            cmds.CreateGroup("play", cgb =>
-            {
-                string videoQuery = "";
 
-                cgb.CreateCommand("youtube")
-                        .Alias(new string[] { "yt", "y" })
-                        .Description("Plays a YouTube video's audio.")
-                        .Parameter("videoName", ParameterType.Required)
-                        .Do( e =>
+            cmds.CreateCommand("play")
+                        .Alias(new string[] { "pl", "p" })
+                        .Description("Plays a file's audio from Pinhead's DropBox directory.")
+                        .Parameter("fileName", ParameterType.Required)
+                        .Do(e =>
                         {
-                            foreach (char element in e.GetArg("videoName"))
+                            foreach (char element in e.GetArg("fileName"))
                             {
                                 if (element == '_')
                                 {
-                                    videoQuery = e.GetArg("videoName").ToString().Replace('_', ' ');
+                                    audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
                                 }
                             }
 
-                            if (!videoQuery.Contains(" "))
+                            audioQuery = e.GetArg("fileName").ToString();
+
+                            for (int i = 0; i < Directory.GetFiles(audioPath).Length; i++)
                             {
-                                videoQuery = e.GetArg("videoName");
+                                audioFiles = Directory.GetFiles(audioPath);
+                                fileNames = Directory.GetFiles(audioPath);
+                                fileTypes = Directory.GetFiles(audioPath);
+
+                                fileNames[i] = audioFiles[i].Substring(audioPath.Length, audioFiles[i].Substring(audioPath.Length - 1).Length - 1);
+                                fileTypes[i] = audioFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
+                                fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
+
+                                e.Channel.SendMessage(audioFiles[i]);
+                                e.Channel.SendMessage(fileNames[i]);
+                                e.Channel.SendMessage(fileTypes[i]);
                             }
 
+                            int fileTypeIndex = -1;
+
+                            for (int i = 0; i < fileNames.Length; i++)
+                            {
+                                if (fileNames[i] == e.GetArg("fileName"))
+                                {
+                                    fileTypeIndex = i;
+                                }
+
+                            }
+
+                            if (!audioQuery.Contains(" "))
+                            {
+                                audioQuery = e.GetArg("fileName");
+                            }
+                            
                             serverName = e.User.Server.Name;
                             channelName = e.User.VoiceChannel.Name;
-                            
-                            e.Channel.SendMessage($"{e.User.Name} played the YouTube video: {videoQuery}");
+
+                            e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
                             //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                            SendAudio(audioPath + e.GetArg("videoName")); //This doesn't work
-                            
+
+                            SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+
                             //TODO send the audio of the song that is searched for with the proper file ending
                             //TODO add a command that allows the user to view a list of all playable songs
                             //TODO add a command that allows the user to change the volume of the bot
@@ -86,36 +113,18 @@ namespace Bobert
 
                         });
 
-                cgb.CreateCommand("spotify")
+            cmds.CreateCommand("spotify")
                         .Alias(new string[] { "sp", "s" })
                         .Description("Plays a song from Spotify.")
                         .Parameter("songName", ParameterType.Required)
-                        .Do( e =>
+                        .Do(e =>
                         {
-                            foreach (char element in e.GetArg("songName"))
-                            {
-                                if (element == '_')
-                                {
-                                    videoQuery = e.GetArg("songName").ToString().Replace('_', ' ');
-                                }
-                            }
-
-                            if (!videoQuery.Contains(" "))
-                            {
-                                videoQuery = e.GetArg("songName");
-                            }
-
-                            serverName = e.User.Server.Name;
-                            channelName = e.User.VoiceChannel.Name;
-
-                            e.Channel.SendMessage($"{e.User.Name} played the Spotify song: {videoQuery}");
-                            SendAudio("");
+                            
                         });
-            });
-
+            
             client.ExecuteAndWait(async () => { await client.Connect("MjcxNjk3OTA1NzIxNTQwNjA5.C2KYcA.wDKEh-OWHTw0XazldDs_dYniMSA", TokenType.Bot); });
         }
-
+        
         private void Log(object sender, LogMessageEventArgs e)
         {
             Console.WriteLine(e.Message);
