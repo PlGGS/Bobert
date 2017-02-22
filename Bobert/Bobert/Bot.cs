@@ -7,6 +7,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Bobert
 {
@@ -21,6 +22,7 @@ namespace Bobert
         string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
+        string[] commands = new string[] {"play", "stop", "listFiles", "help"};
         bool audioPlaying = false;
         string currentAudio = "";
 
@@ -46,12 +48,7 @@ namespace Bobert
             });
 
             cmds = client.GetService<CommandService>();
-
-            cmds.CreateCommand("herro").Do(async (e) =>
-            {
-                await e.Channel.SendMessage("world!");
-            });
-
+            
             cmds.CreateCommand("listFiles").Do(async (e) =>
             {
                 await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (mp3 and wav files only)");
@@ -60,6 +57,16 @@ namespace Bobert
                 for (int i = 0; i < fileNames.Length; i++)
                 {
                     await e.Channel.SendMessage(fileNames[i]);
+                }
+            });
+
+            cmds.CreateCommand("help").Do(async (e) =>
+            {
+                await e.Channel.SendMessage("Commands:");
+
+                foreach (string cmd in commands)
+                {
+                    await e.Channel.SendMessage(cmd);
                 }
             });
 
@@ -139,15 +146,6 @@ namespace Bobert
                     await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
                 }
             });
-
-            cmds.CreateCommand("spotify")
-                        .Alias(new string[] { "sp", "s" })
-                        .Description("Plays a song from Spotify.")
-                        .Parameter("songName", ParameterType.Required)
-                        .Do(e =>
-                        {
-                            
-                        });
             
             client.ExecuteAndWait(async () => { await client.Connect("MjcxNjk3OTA1NzIxNTQwNjA5.C2KYcA.wDKEh-OWHTw0XazldDs_dYniMSA", TokenType.Bot); });
         }
