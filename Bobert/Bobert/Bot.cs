@@ -30,6 +30,7 @@ namespace Bobert
             {
                 input.LogLevel = LogSeverity.Info;
                 input.LogHandler = Log;
+                SetArrayValues();
             });
             
             client.UsingCommands(input =>
@@ -48,7 +49,18 @@ namespace Bobert
 
             cmds.CreateCommand("herro").Do(async (e) =>
             {
-                await e.Channel.SendMessage("World!");
+                await e.Channel.SendMessage("world!");
+            });
+
+            cmds.CreateCommand("listFiles").Do(async (e) =>
+            {
+                await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (mp3 and wav files only)");
+                await e.Channel.SendMessage("Files:");
+
+                for (int i = 0; i < fileNames.Length; i++)
+                {
+                    await e.Channel.SendMessage(fileNames[i]);
+                }
             });
 
             cmds.CreateCommand("play")
@@ -58,7 +70,7 @@ namespace Bobert
                         .Do(e =>
                         {
                             audioPlaying = true;
-                            currentAudio = e.GetArg("audioQuery");
+                            currentAudio = e.GetArg("fileName");
 
                             foreach (char element in e.GetArg("fileName"))
                             {
@@ -69,16 +81,7 @@ namespace Bobert
                             }
 
                             audioQuery = e.GetArg("fileName").ToString();
-                            audioFiles = Directory.GetFiles(audioPath);
-                            fileNames = Directory.GetFiles(audioPath);
-                            fileTypes = Directory.GetFiles(audioPath);
-
-                            for (int i = 0; i < Directory.GetFiles(audioPath).Length; i++)
-                            {
-                                fileNames[i] = audioFiles[i].Substring(audioPath.Length, audioFiles[i].Substring(audioPath.Length - 1).Length - 1);
-                                fileTypes[i] = audioFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
-                                fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
-                            }
+                            SetArrayValues();
 
                             int fileTypeIndex = -1;
 
@@ -95,15 +98,21 @@ namespace Bobert
                             {
                                 audioQuery = e.GetArg("fileName");
                             }
-                            
+
                             serverName = e.User.Server.Name;
                             channelName = e.User.VoiceChannel.Name;
 
-                            e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
-                            //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                            
-                            SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                            if (fileTypeIndex != -1)
+                            {
+                                e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                                SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                            }
+                            else
+                            {
+                                e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                            }
 
+                            //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
                             //TODO figure out why the arrays are being set as the full strings
                             //TODO send the audio of the song that is searched for with the proper file ending
                             //TODO add a command that allows the user to view a list of all playable songs
@@ -136,7 +145,21 @@ namespace Bobert
             
             client.ExecuteAndWait(async () => { await client.Connect("MjcxNjk3OTA1NzIxNTQwNjA5.C2KYcA.wDKEh-OWHTw0XazldDs_dYniMSA", TokenType.Bot); });
         }
-        
+
+        private void SetArrayValues()
+        {
+            audioFiles = Directory.GetFiles(audioPath);
+            fileNames = Directory.GetFiles(audioPath);
+            fileTypes = Directory.GetFiles(audioPath);
+
+            for (int i = 0; i < Directory.GetFiles(audioPath).Length; i++)
+            {
+                fileNames[i] = audioFiles[i].Substring(audioPath.Length, audioFiles[i].Substring(audioPath.Length - 1).Length - 1);
+                fileTypes[i] = audioFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
+                fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
+            }
+        }
+
         private void Log(object sender, LogMessageEventArgs e)
         {
             Console.WriteLine(e.Message);
