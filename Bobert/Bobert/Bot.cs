@@ -21,7 +21,8 @@ namespace Bobert
         string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
-
+        bool audioPlaying = false;
+        string currentAudio = "";
 
         public Bot()
         {
@@ -56,6 +57,9 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(e =>
                         {
+                            audioPlaying = true;
+                            currentAudio = e.GetArg("audioQuery");
+
                             foreach (char element in e.GetArg("fileName"))
                             {
                                 if (element == '_')
@@ -97,7 +101,7 @@ namespace Bobert
 
                             e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
                             //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-
+                            
                             SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
 
                             //TODO figure out why the arrays are being set as the full strings
@@ -108,6 +112,18 @@ namespace Bobert
                             //TODO remove yt and spotify parts of commands and maybe remove youtubesearch.dll from references
 
                         });
+
+            cmds.CreateCommand("stop").Do(async (e) =>
+            {
+                if (audioPlaying)
+                {
+                    await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
+                    audioPlaying = false;
+                } else
+                {
+                    await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
+                }
+            });
 
             cmds.CreateCommand("spotify")
                         .Alias(new string[] { "sp", "s" })
@@ -144,7 +160,7 @@ namespace Bobert
             byte[] buffer = new byte[blockSize];
             int byteCount;
 
-            while (true) // Loop forever, so data will always be read
+            while (audioPlaying) // TODO check to see if user stops the audio playback
             {
                 byteCount = process.StandardOutput.BaseStream // Access the underlying MemoryStream from the stdout of FFmpeg
                         .Read(buffer, 0, blockSize); // Read stdout into the buffer
