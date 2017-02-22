@@ -69,57 +69,63 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(e =>
                         {
-                            audioPlaying = true;
-                            currentAudio = e.GetArg("fileName");
-
-                            foreach (char element in e.GetArg("fileName"))
+                            if (audioPlaying)
                             {
-                                if (element == '_')
-                                {
-                                    audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
-                                }
-                            }
-
-                            audioQuery = e.GetArg("fileName").ToString();
-                            SetArrayValues();
-
-                            int fileTypeIndex = -1;
-
-                            for (int i = 0; i < fileNames.Length; i++)
-                            {
-                                if (fileNames[i] == e.GetArg("fileName"))
-                                {
-                                    fileTypeIndex = i;
-                                }
-
-                            }
-
-                            if (!audioQuery.Contains(" "))
-                            {
-                                audioQuery = e.GetArg("fileName");
-                            }
-
-                            serverName = e.User.Server.Name;
-                            channelName = e.User.VoiceChannel.Name;
-
-                            if (fileTypeIndex != -1)
-                            {
-                                e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
-                                SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                                e.Channel.SendMessage("Audio is already playing. Use /stop to end current playback");
                             }
                             else
                             {
-                                e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                                audioPlaying = true;
+                                currentAudio = e.GetArg("fileName");
+
+                                foreach (char element in e.GetArg("fileName"))
+                                {
+                                    if (element == '_')
+                                    {
+                                        audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
+                                    }
+                                }
+
+                                audioQuery = e.GetArg("fileName").ToString();
+                                SetArrayValues();
+
+                                int fileTypeIndex = -1;
+
+                                for (int i = 0; i < fileNames.Length; i++)
+                                {
+                                    if (fileNames[i] == e.GetArg("fileName"))
+                                    {
+                                        fileTypeIndex = i;
+                                    }
+
+                                }
+
+                                if (!audioQuery.Contains(" "))
+                                {
+                                    audioQuery = e.GetArg("fileName");
+                                }
+
+                                serverName = e.User.Server.Name;
+                                channelName = e.User.VoiceChannel.Name;
+
+                                if (fileTypeIndex != -1)
+                                {
+                                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                                }
+                                else
+                                {
+                                    e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                                }
+
+                                //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
+                                //TODO figure out why the arrays are being set as the full strings
+                                //TODO send the audio of the song that is searched for with the proper file ending
+                                //TODO add a command that allows the user to view a list of all playable songs
+                                //TODO add a command that allows the user to change the volume of the bot
+                                //TODO install dropbox and teamviewer on the $8 PC for use of Pinhead on there
+                                //TODO remove yt and spotify parts of commands and maybe remove youtubesearch.dll from references
                             }
-
-                            //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                            //TODO figure out why the arrays are being set as the full strings
-                            //TODO send the audio of the song that is searched for with the proper file ending
-                            //TODO add a command that allows the user to view a list of all playable songs
-                            //TODO add a command that allows the user to change the volume of the bot
-                            //TODO install dropbox and teamviewer on the $8 PC for use of Pinhead on there
-                            //TODO remove yt and spotify parts of commands and maybe remove youtubesearch.dll from references
-
                         });
 
             cmds.CreateCommand("stop").Do(async (e) =>
