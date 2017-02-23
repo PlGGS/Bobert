@@ -191,6 +191,8 @@ namespace Bobert
                 UseShellExecute = false,
                 RedirectStandardOutput = true // Capture the stdout of the process
             });
+
+            procFFMPEG.PriorityBoostEnabled = true;
             System.Threading.Thread.Sleep(2000); // Sleep for a few seconds to FFmpeg can start processing data.
 
             int blockSize = 3840; // The size of bytes to read per frame; 1920 for mono
