@@ -23,6 +23,8 @@ namespace Bobert
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
         string[] commands = new string[] {"play", "stop", "listFiles", "help"};
+        static Random randomize = new Random();
+        int rnd = 0;
         bool audioPlaying = false;
         string currentAudio = "";
 
@@ -131,8 +133,17 @@ namespace Bobert
 
                                 if (fileTypeIndex != -1)
                                 {
-                                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
-                                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                                    if (e.GetArg("fileName") == "random")
+                                    {
+                                        e.Channel.SendMessage($"{e.User.Name} played a random audio file");
+                                        rnd = randomize.Next(0, audioFiles.Length - 1);
+                                        SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
+                                    }
+                                    else
+                                    {
+                                        e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                                        SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                                    }
                                 }
                                 else
                                 {
