@@ -6,8 +6,6 @@ using YoutubeSearch;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
-using System.Collections;
-using System.Collections.Generic;
 
 namespace Bobert
 {
@@ -17,6 +15,7 @@ namespace Bobert
         CommandService cmds;
         string serverName;
         string channelName;
+        IAudioClient vClient;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
         string audioQuery;
         string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
@@ -51,7 +50,7 @@ namespace Bobert
             
             cmds.CreateCommand("listFiles").Do(async (e) =>
             {
-                await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (mp3 and wav files only)");
+                await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (MP3 and WAV files only, NO spaces in the file names)");
                 await e.Channel.SendMessage("Files:");
 
                 for (int i = 0; i < fileNames.Length; i++)
@@ -67,6 +66,20 @@ namespace Bobert
                 foreach (string cmd in commands)
                 {
                     await e.Channel.SendMessage(cmd);
+                }
+            });
+
+            cmds.CreateCommand("vol").Do(async (e) =>
+            {
+                await e.Channel.SendMessage("");
+
+                if (audioPlaying)
+                {
+                    //TODO figure out if it is possible to change the volume of the output stream
+                }
+                else
+                {
+                    //TODO decide whether or not a different output occurs if audio is not currently playing
                 }
             });
 
@@ -126,12 +139,8 @@ namespace Bobert
                                 }
 
                                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                                //TODO figure out why the arrays are being set as the full strings
-                                //TODO send the audio of the song that is searched for with the proper file ending
-                                //TODO add a command that allows the user to view a list of all playable songs
                                 //TODO add a command that allows the user to change the volume of the bot
-                                //TODO install dropbox and teamviewer on the $8 PC for use of Pinhead on there
-                                //TODO remove yt and spotify parts of commands and maybe remove youtubesearch.dll from references
+                                //TODO remove youtubesearch.dll from references
                             }
                         });
 
@@ -171,9 +180,10 @@ namespace Bobert
 
         public async void SendAudio(string pathOrUrl)
         {
-            var vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
+            //TODO make sure this works as a public variable
+            vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
-            var process = Process.Start(new ProcessStartInfo
+            Process process = Process.Start(new ProcessStartInfo
             { // FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                 FileName = "ffmpeg",
                 Arguments = $"-i {pathOrUrl} " + // Here we provide a list of arguments to feed into FFmpeg. -i means the location of the file/URL it will read from
