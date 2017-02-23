@@ -16,6 +16,7 @@ namespace Bobert
         string serverName;
         string channelName;
         IAudioClient vClient;
+        Process procFFMPEG;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
         string audioQuery;
         string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
@@ -139,8 +140,7 @@ namespace Bobert
                                 }
 
                                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                                //TODO add a command that allows the user to change the volume of the bot
-                                //TODO remove youtubesearch.dll from references
+                                //TODO possibly remove youtubesearch.dll from references if it's just not gonna happen
                             }
                         });
 
@@ -183,7 +183,7 @@ namespace Bobert
             //TODO make sure this works as a public variable
             vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
-            Process process = Process.Start(new ProcessStartInfo
+            procFFMPEG = Process.Start(new ProcessStartInfo
             { // FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                 FileName = "ffmpeg",
                 Arguments = $"-i {pathOrUrl} " + // Here we provide a list of arguments to feed into FFmpeg. -i means the location of the file/URL it will read from
@@ -199,7 +199,7 @@ namespace Bobert
 
             while (audioPlaying) // TODO check to see if user stops the audio playback
             {
-                byteCount = process.StandardOutput.BaseStream // Access the underlying MemoryStream from the stdout of FFmpeg
+                byteCount = procFFMPEG.StandardOutput.BaseStream // Access the underlying MemoryStream from the stdout of FFmpeg
                         .Read(buffer, 0, blockSize); // Read stdout into the buffer
 
                 if (byteCount == 0) // FFmpeg did not output anything
