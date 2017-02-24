@@ -92,6 +92,8 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(e =>
                         {
+                            rnd = randomize.Next(0, audioFiles.Length);
+
                             if (audioPlaying)
                             {
                                 e.Channel.SendMessage("Audio is already playing. Use /stop to end current playback");
@@ -152,8 +154,7 @@ namespace Bobert
                                 {
                                     audioPlaying = true;
                                     currentAudio = e.GetArg("fileName");
-
-                                    rnd = randomize.Next(0, audioFiles.Length - 1);
+                                    
                                     e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
                                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
                                 }
