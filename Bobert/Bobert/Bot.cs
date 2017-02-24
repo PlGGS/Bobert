@@ -98,9 +98,6 @@ namespace Bobert
                             }
                             else
                             {
-                                audioPlaying = true;
-                                currentAudio = e.GetArg("fileName");
-
                                 foreach (char element in e.GetArg("fileName"))
                                 {
                                     if (element == '_')
@@ -127,41 +124,63 @@ namespace Bobert
                                 {
                                     audioQuery = e.GetArg("fileName");
                                 }
+                                else
+                                {
+                                    e.Channel.SendMessage("Please make sure there are no spaces in the file name you wish to play");
+                                }
 
                                 serverName = e.User.Server.Name;
-                                channelName = e.User.VoiceChannel.Name;
 
+                                try
+                                {
+                                    channelName = e.User.VoiceChannel.Name;
+                                }
+                                catch (NullReferenceException)
+                                {
+                                    e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                                }
+                                
                                 if (fileTypeIndex != -1)
                                 {
-                                    if (e.GetArg("fileName") == "random")
-                                    {
-                                        e.Channel.SendMessage($"{e.User.Name} played a random audio file");
-                                        rnd = randomize.Next(0, audioFiles.Length - 1);
-                                        SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
-                                    }
-                                    else
-                                    {
-                                        e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
-                                        SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
-                                    }
+                                    audioPlaying = true;
+                                    currentAudio = e.GetArg("fileName");
+
+                                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
                                 }
-                                else
+                                else if (audioQuery == "random")
+                                {
+                                    audioPlaying = true;
+                                    currentAudio = e.GetArg("fileName");
+
+                                    rnd = randomize.Next(0, audioFiles.Length - 1);
+                                    e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
+                                }
+                                else if (audioQuery != "random")
                                 {
                                     e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
                                 }
 
                                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
                                 //TODO possibly remove youtubesearch.dll from references if it's just not gonna happen
+                                //TODO fix 'random' playback of han
                             }
                         });
 
             cmds.CreateCommand("stop").Do(async (e) =>
             {
-                if (audioPlaying)
+                if (audioPlaying && audioQuery != "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
                     audioPlaying = false;
-                } else
+                }
+                else if (audioPlaying && audioQuery == "random")
+                {
+                    await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
+                    audioPlaying = false;
+                }
+                else
                 {
                     await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
                 }
