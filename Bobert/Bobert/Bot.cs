@@ -168,7 +168,8 @@ namespace Bobert
                             }
                         });
 
-            cmds.CreateCommand("stop").Do(async (e) =>
+            cmds.CreateCommand("stop").Alias(new string[] { "skip" })
+                .Do(async (e) =>
             {
                 if (audioPlaying && audioQuery != "random")
                 {
@@ -252,6 +253,7 @@ namespace Bobert
                 }
                 vClient.Wait(); // Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
                 await vClient.Disconnect();
+                audioPlaying = false;
             }
             catch (OperationCanceledException)
             {
