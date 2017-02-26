@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+
+//Source: http://stackoverflow.com/questions/20938934/controlling-applications-volume-by-process-id
 
 namespace Bobert
 {
@@ -29,15 +32,16 @@ namespace Bobert
             return mute;
         }
 
-        public static void SetApplicationVolume(int pid, float level)
+        public static Task SetApplicationVolume(int pid, float level)
         {
             ISimpleAudioVolume volume = GetVolumeObject(pid);
             if (volume == null)
-                return;
+                return null;
 
             Guid guid = Guid.Empty;
             volume.SetMasterVolume(level / 100, ref guid);
             Marshal.ReleaseComObject(volume);
+            return null;
         }
 
         public static void SetApplicationMute(int pid, bool mute)

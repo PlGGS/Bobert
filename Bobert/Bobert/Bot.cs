@@ -7,11 +7,16 @@ using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace Bobert
 {
     class Bot
     {
+        [DllImport("user32.dll")]
+        public static extern IntPtr FindWindow(string strClassName, string strWindowName);
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
         DiscordClient client;
         CommandService cmds;
         string serverName;
@@ -170,7 +175,7 @@ namespace Bobert
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
-                .Do(async (e) =>
+                        .Do(async (e) =>
             {
                 if (audioPlaying && audioQuery != "random")
                 {
@@ -188,6 +193,16 @@ namespace Bobert
                 }
             });
 
+            cmds.CreateCommand("volume").Alias(new string[] { "vol" })
+                        .Parameter("volPercent", ParameterType.Required)
+                        .Do(async (e) =>
+                        {
+                            Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
+
+                            await e.Channel.SendMessage($"{e.User.Name} set the volume to {e.GetArg("volPercent")}");
+                            await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
+                        });
+            
             ConnectBot();
         }
 
