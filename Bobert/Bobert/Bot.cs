@@ -6,6 +6,7 @@ using YoutubeSearch;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Bobert
 {
@@ -256,6 +257,11 @@ namespace Bobert
                 audioPlaying = false;
             }
             catch (OperationCanceledException)
+            {
+                ConnectBot();
+                SendAudio(pathOrUrl);
+            }
+            catch (NullReferenceException)
             {
                 ConnectBot();
                 SendAudio(pathOrUrl);
