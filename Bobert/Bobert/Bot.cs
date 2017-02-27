@@ -228,12 +228,7 @@ namespace Bobert
                 }
             }
         }
-
-        private void Log(object sender, LogMessageEventArgs e)
-        {
-            Console.WriteLine(e.Message);
-        }
-
+        
         public async void SendAudio(string pathOrUrl)
         {
             try
@@ -271,12 +266,7 @@ namespace Bobert
                 await vClient.Disconnect();
                 audioPlaying = false;
             }
-            catch (OperationCanceledException)
-            {
-                ConnectBot();
-                SendAudio(pathOrUrl);
-            }
-            catch (NullReferenceException)
+            catch (Exception)
             {
                 ConnectBot();
                 SendAudio(pathOrUrl);
