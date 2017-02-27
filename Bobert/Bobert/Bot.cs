@@ -2,7 +2,6 @@
 using Discord;
 using Discord.Commands;
 using Discord.Audio;
-using YoutubeSearch;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
@@ -33,6 +32,7 @@ namespace Bobert
         int rnd = 0;
         bool audioPlaying = false;
         string currentAudio = "";
+        string currentFile = "";
 
         public Bot()
         {
@@ -78,19 +78,24 @@ namespace Bobert
                 }
             });
 
-            cmds.CreateCommand("vol").Do(async (e) =>
-            {
-                await e.Channel.SendMessage("");
+            cmds.CreateCommand("vol")
+                        .Parameter("amt", ParameterType.Required)
+                        .Do(async (e) =>
+                        {
+                            await e.Channel.SendMessage($"{e.User.Name} changed the volume to: {e.GetArg("amt")}");
+                            procFFMPEG.StandardInput.WriteLine($"ffmpeg -f lavfi -i \"amovie = {currentFile}, volume = { e.GetArg("amt")}\" {currentFile}");
+                            await e.Channel.SendMessage("Command sent without error");
 
-                if (audioPlaying)
-                {
-                    //TODO figure out if it is possible to change the volume of the output stream
-                }
-                else
-                {
-                    //TODO decide whether or not a different output occurs if audio is not currently playing
-                }
-            });
+                            if (audioPlaying)
+                            {
+                                //TODO figure out if it is possible to change the volume of the output stream
+                            }
+                            else
+                            {
+                                //TODO figure out whether or not a different output occurs before a song is actually played
+                                //TODO if not, just save the value for using the command when a user does play a song
+                            }
+                        });
 
             cmds.CreateCommand("play")
                         .Alias(new string[] { "pl", "p" })
@@ -154,6 +159,7 @@ namespace Bobert
                                     currentAudio = e.GetArg("fileName");
 
                                     e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                                    currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
                                     SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
                                 }
                                 else if (audioQuery == "random")
@@ -228,7 +234,12 @@ namespace Bobert
                 }
             }
         }
-        
+
+        private void Log(object sender, LogMessageEventArgs e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
         public async void SendAudio(string pathOrUrl)
         {
             try
