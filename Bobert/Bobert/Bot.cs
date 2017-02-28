@@ -36,6 +36,7 @@ namespace Bobert
         static Random randomize = new Random();
         int rnd = 0;
         bool audioPlaying = false;
+        bool loop = false;
         string currentAudio = "";
         string currentFile = "";
 
@@ -108,81 +109,18 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(e =>
                         {
-                            rnd = randomize.Next(0, audioFiles.Length);
+                            loop = false;
+                            PlayAudio(e);
+                        });
 
-                            if (audioPlaying)
-                            {
-                                e.Channel.SendMessage("Audio is already playing. Use /stop to end current playback");
-                            }
-                            else
-                            {
-                                foreach (char element in e.GetArg("fileName"))
-                                {
-                                    if (element == '_')
-                                    {
-                                        audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
-                                    }
-                                }
-
-                                audioQuery = e.GetArg("fileName").ToString();
-                                SetArrayValues();
-
-                                int fileTypeIndex = -1;
-
-                                for (int i = 0; i < fileNames.Length; i++)
-                                {
-                                    if (fileNames[i] == e.GetArg("fileName"))
-                                    {
-                                        fileTypeIndex = i;
-                                    }
-
-                                }
-
-                                if (!audioQuery.Contains(" "))
-                                {
-                                    audioQuery = e.GetArg("fileName");
-                                }
-                                else
-                                {
-                                    e.Channel.SendMessage("Please make sure there are no spaces in the file name you wish to play");
-                                }
-
-                                serverName = e.User.Server.Name;
-
-                                try
-                                {
-                                    channelName = e.User.VoiceChannel.Name;
-                                }
-                                catch (NullReferenceException)
-                                {
-                                    e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
-                                }
-
-                                if (fileTypeIndex != -1)
-                                {
-                                    audioPlaying = true;
-                                    currentAudio = e.GetArg("fileName");
-
-                                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
-                                    currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
-                                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
-                                }
-                                else if (audioQuery == "random")
-                                {
-                                    audioPlaying = true;
-                                    currentAudio = e.GetArg("fileName");
-
-                                    e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
-                                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
-                                }
-                                else if (audioQuery != "random")
-                                {
-                                    e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
-                                }
-
-                                //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                                //TODO possibly remove youtubesearch.dll from references if it's just not gonna happen
-                            }
+            cmds.CreateCommand("loop")
+                        .Alias(new string[] { "l" })
+                        .Description("Loops a file's audio from Pinhead's DropBox directory until someone uses the /stop command.")
+                        .Parameter("fileName", ParameterType.Required)
+                        .Do(e =>
+                        {
+                            loop = true;
+                            PlayAudio(e);
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
@@ -192,11 +130,13 @@ namespace Bobert
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
                     audioPlaying = false;
+                    loop = false;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
                     audioPlaying = false;
+                    loop = false;
                 }
                 else
                 {
@@ -215,6 +155,86 @@ namespace Bobert
                         });
             
             ConnectBot();
+        }
+
+        private void PlayAudio(CommandEventArgs e)
+        {
+            rnd = randomize.Next(0, audioFiles.Length);
+
+            if (audioPlaying)
+            {
+                e.Channel.SendMessage("Audio is already playing. Use /stop to end current playback");
+            }
+            else
+            {
+                foreach (char element in e.GetArg("fileName"))
+                {
+                    if (element == '_')
+                    {
+                        audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
+                    }
+                }
+
+                audioQuery = e.GetArg("fileName").ToString();
+                SetArrayValues();
+
+                int fileTypeIndex = -1;
+
+                for (int i = 0; i < fileNames.Length; i++)
+                {
+                    if (fileNames[i] == e.GetArg("fileName"))
+                    {
+                        fileTypeIndex = i;
+                    }
+
+                }
+
+                if (!audioQuery.Contains(" "))
+                {
+                    audioQuery = e.GetArg("fileName");
+                }
+                else
+                {
+                    e.Channel.SendMessage("Please make sure there are no spaces in the file name you wish to play");
+                }
+
+                serverName = e.User.Server.Name;
+
+                try
+                {
+                    channelName = e.User.VoiceChannel.Name;
+                }
+                catch (NullReferenceException)
+                {
+                    e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                }
+
+                if (fileTypeIndex != -1)
+                {
+                    audioPlaying = true;
+                    currentAudio = e.GetArg("fileName");
+
+                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                    currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
+                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                }
+                else if (audioQuery == "random")
+                {
+                    audioPlaying = true;
+                    currentAudio = e.GetArg("fileName");
+
+                    e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
+                }
+                else if (audioQuery != "random")
+                {
+                    e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                }
+
+                //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
+                //TODO possibly remove youtubesearch.dll from references if it's just not gonna happen
+                //TODO add loop command
+            }
         }
 
         private void ConnectBot()
@@ -243,6 +263,14 @@ namespace Bobert
         private void Log(object sender, LogMessageEventArgs e)
         {
             Console.WriteLine(e.Message);
+
+            //if (!File.Exists(audioPath + "log.txt"))
+            //{
+            //    File.Create(audioPath + "log.txt");
+            //}
+
+            //StreamWriter logger = new StreamWriter(audioPath + "log.txt");
+            //logger.WriteLine(e.Message);
         }
 
         public async void SendAudio(string pathOrUrl)
@@ -279,8 +307,16 @@ namespace Bobert
                     vClient.Send(buffer, 0, byteCount); // Send our data to Discord
                 }
                 vClient.Wait(); // Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
-                await vClient.Disconnect();
-                audioPlaying = false;
+
+                if (loop)
+                {
+                    SendAudio(pathOrUrl);
+                }
+                else
+                {
+                    await vClient.Disconnect();
+                    audioPlaying = false;
+                }
             }
             catch (Exception)
             {
