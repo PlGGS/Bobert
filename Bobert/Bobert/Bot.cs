@@ -18,16 +18,21 @@ namespace Bobert
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
         DiscordClient client;
         CommandService cmds;
-        string serverName;
-        string channelName;
+        string serverName = "";
+        string channelName = "";
         IAudioClient vClient;
         Process procFFMPEG;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
-        string audioQuery;
-        string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files
+        string audioQuery = "";
+        string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
-        string[] commands = new string[] {"play", "stop", "listFiles", "help"};
+        string[] commands = new string[] {"play: Plays a specified audio file one time",
+                                          "loop: Repeatedly plays a specified audio file",
+                                          "stop: Stops a currently playing audio file",
+                                          "vol: Allows users to set the volume of the bot to a value between 0 and 100",
+                                          "files: Lists all files in the bot's audio folder",
+                                          "help: Shows this list of commands" };
         static Random randomize = new Random();
         int rnd = 0;
         bool audioPlaying = false;
@@ -57,7 +62,7 @@ namespace Bobert
 
             cmds = client.GetService<CommandService>();
 
-            cmds.CreateCommand("listFiles").Do(async (e) =>
+            cmds.CreateCommand("files").Do(async (e) =>
             {
                 await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (MP3 and WAV files only, NO spaces in the file names)");
                 await e.Channel.SendMessage("Files:");
@@ -83,7 +88,7 @@ namespace Bobert
                         .Do(async (e) =>
                         {
                             await e.Channel.SendMessage($"{e.User.Name} changed the volume to: {e.GetArg("amt")}");
-                            procFFMPEG.StandardInput.WriteLine($"ffmpeg -f lavfi -i \"amovie = {currentFile}, volume = { e.GetArg("amt")}\" {currentFile}");
+                            await procFFMPEG.StandardInput.WriteLineAsync($"ffmpeg -f lavfi -i \"amovie = {currentFile}, volume = { e.GetArg("amt")}\" {currentFile}");
                             await e.Channel.SendMessage("Command sent without error");
 
                             if (audioPlaying)
