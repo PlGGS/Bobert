@@ -31,7 +31,7 @@ namespace Bobert
                                           "loop: Repeatedly plays a specified audio file",
                                           "stop: Stops a currently playing audio file",
                                           "vol: Allows users to set the volume of the bot to a value between 0 and 100",
-                                          "files: Lists all files in the bot's audio folder",
+                                          "listFiles: Lists all files in the bot's audio folder",
                                           "help: Shows this list of commands" };
         static Random randomize = new Random();
         int rnd = 0;
@@ -63,7 +63,9 @@ namespace Bobert
 
             cmds = client.GetService<CommandService>();
 
-            cmds.CreateCommand("files").Do(async (e) =>
+            cmds.CreateCommand("listFiles")
+                .Alias(new string[] { "files", "flies" })
+                .Do(async (e) =>
             {
                 await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (MP3 and WAV files only, NO spaces in the file names)");
                 await e.Channel.SendMessage("Files:");
