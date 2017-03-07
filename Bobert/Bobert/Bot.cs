@@ -24,15 +24,16 @@ namespace Bobert
         Process procFFMPEG;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
         string audioQuery = "";
-        string[] audioFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
+        string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
-        string[] commands = new string[] {"play: Plays a specified audio file one time",
-                                          "loop: Repeatedly plays a specified audio file",
-                                          "stop: Stops a currently playing audio file",
-                                          "vol: Allows users to set the volume of the bot to a value between 0 and 100",
-                                          "listFiles: Lists all files in the bot's audio folder",
-                                          "help: Shows this list of commands" };
+        string[] audioFiles; //TODO make an array of all audioFiles that is the correct length
+        string[] commands = new string[] {"play [pl, p]: Plays a specified audio file one time",
+                                          "loop [l]: Repeatedly plays a specified audio file",
+                                          "stop [skip]: Stops a currently playing audio file",
+                                          "volume [vol, v]: Allows users to set the volume of the bot to a value between 0 and 100",
+                                          "listFiles [files, flies]: Lists all files in the bot's audio folder",
+                                          "help [h]: Shows this list of commands" };
         static Random randomize = new Random();
         int rnd = 0;
         bool audioPlaying = false;
@@ -63,20 +64,9 @@ namespace Bobert
 
             cmds = client.GetService<CommandService>();
 
-            cmds.CreateCommand("listFiles")
-                .Alias(new string[] { "files", "flies" })
-                .Do(async (e) =>
-            {
-                await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (MP3 and WAV files only, NO spaces in the file names)");
-                await e.Channel.SendMessage("Files:");
-
-                for (int i = 0; i < fileNames.Length; i++)
-                {
-                    await e.Channel.SendMessage(fileNames[i]);
-                }
-            });
-
-            cmds.CreateCommand("help").Do(async (e) =>
+            cmds.CreateCommand("help")
+                        .Alias(new string[] {"h"})
+                        .Do(async (e) =>
             {
                 await e.Channel.SendMessage("Commands:");
 
@@ -86,7 +76,27 @@ namespace Bobert
                 }
             });
 
-            cmds.CreateCommand("vol")
+            cmds.CreateCommand("listFiles")
+                .Alias(new string[] { "files", "flies" })
+                .Do(async (e) =>
+            {
+                await e.Channel.SendMessage("To add more files, go to https://www.dropbox.com/sh/8vy5iz7ndsgcnpl/AAA6yI_TcR_swccegTeTpcqfa?dl=0, and drop in your own (MP3 and WAV files only, NO spaces in the file names)");
+                await e.Channel.SendMessage("Files:");
+                string tmpList = "";
+
+                for (int i = 0; i < fileNames.Length; i++)
+                {
+                    if (!fileNames[i].Contains(audioPath))
+                    {
+                        tmpList += "- " + fileNames[i] + "\n";
+                    }
+                }
+
+                await e.Channel.SendMessage(tmpList);
+            });
+
+            cmds.CreateCommand("volume")
+                        .Alias(new string[] {"vol", "v"})
                         .Parameter("amt", ParameterType.Required)
                         .Do(async (e) =>
                         {
@@ -154,6 +164,7 @@ namespace Bobert
 
                             await e.Channel.SendMessage($"{e.User.Name} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
+                            //TODO fix this...?
                         });
             
             ConnectBot();
@@ -161,7 +172,7 @@ namespace Bobert
 
         private void PlayAudio(CommandEventArgs e)
         {
-            rnd = randomize.Next(0, audioFiles.Length);
+            rnd = randomize.Next(0, allFiles.Length);
 
             if (audioPlaying)
             {
@@ -246,17 +257,18 @@ namespace Bobert
 
         private void SetArrayValues()
         {
-            audioFiles = Directory.GetFiles(audioPath);
+            allFiles = Directory.GetFiles(audioPath);
             fileNames = Directory.GetFiles(audioPath);
             fileTypes = Directory.GetFiles(audioPath);
-
-            for (int i = 0; i < Directory.GetFiles(audioPath).Length; i++)
+            
+            for (int i = 0; i < allFiles.Length; i++)
             {
-                if (audioFiles[i].Substring(audioFiles[i].Length - 4, 4) != ".wav" ||
-                    audioFiles[i].Substring(audioFiles[i].Length - 4, 4) != ".mp3")
+                if (allFiles[i].Substring(allFiles[i].Length - 4, 4) == ".wav" ||
+                    allFiles[i].Substring(allFiles[i].Length - 4, 4) == ".mp3")
                 {
-                    fileNames[i] = audioFiles[i].Substring(audioPath.Length, audioFiles[i].Substring(audioPath.Length - 1).Length - 1);
-                    fileTypes[i] = audioFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
+                    //audioFiles[i] = allFiles[i].Substring(audioPath.Length, allFiles[i].Substring(audioPath.Length - 1).Length - 1);
+                    fileNames[i] = allFiles[i].Substring(audioPath.Length, allFiles[i].Substring(audioPath.Length - 1).Length - 1);
+                    fileTypes[i] = allFiles[i].Substring(audioPath.Length + fileNames[i].Length - 4, 4);
                     fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
                 }
             }
