@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using Discord;
 using Discord.Commands;
 using Discord.Audio;
@@ -40,6 +41,7 @@ namespace Bobert
         bool loop = false;
         string currentAudio = "";
         string currentFile = "";
+        ArrayList audioQueue = new ArrayList();
 
         public Bot()
         {
@@ -143,16 +145,28 @@ namespace Bobert
                     await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
                     audioPlaying = false;
                     loop = false;
+                    playNextInQueue();
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
                     audioPlaying = false;
                     loop = false;
+                    playNextInQueue();
                 }
                 else
                 {
                     await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
+                }
+
+                async void playNextInQueue()
+                {
+                    if (audioQueue.Count > 0)
+                    {
+                        await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
+                        SendAudio(audioPath + audioQueue.ToArray()[0], e);
+                        audioQueue.RemoveAt(0);
+                    }
                 }
             });
 
@@ -172,11 +186,16 @@ namespace Bobert
 
         private void PlayAudio(CommandEventArgs e)
         {
-            rnd = randomize.Next(0, allFiles.Length);
+            audioQuery = e.GetArg("fileName").ToString();
+
+            //TODO check if this if statement breaks random audio playback
+            if (audioQuery == "random")
+                rnd = randomize.Next(0, allFiles.Length);
 
             if (audioPlaying)
             {
-                e.Channel.SendMessage("Audio is already playing. Use /stop to end current playback");
+                audioQueue.Add(audioQuery);
+                e.Channel.SendMessage($"{e.User.Name} added {audioQuery} to the queue");
             }
             else
             {
@@ -187,10 +206,8 @@ namespace Bobert
                         audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
                     }
                 }
-
-                audioQuery = e.GetArg("fileName").ToString();
+                
                 SetArrayValues();
-
                 int fileTypeIndex = -1;
 
                 for (int i = 0; i < fileNames.Length; i++)
@@ -229,7 +246,7 @@ namespace Bobert
 
                     e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
                     currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
-                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex]);
+                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex], e);
                 }
                 else if (audioQuery == "random")
                 {
@@ -237,7 +254,7 @@ namespace Bobert
                     currentAudio = e.GetArg("fileName");
 
                     e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
-                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd]);
+                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
                 {
@@ -245,7 +262,6 @@ namespace Bobert
                 }
 
                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                //TODO possibly remove youtubesearch.dll from references if it's just not gonna happen
                 //TODO add loop command
             }
         }
@@ -287,44 +303,49 @@ namespace Bobert
             //logger.WriteLine(e.Message);
         }
 
-        public async void SendAudio(string pathOrUrl)
+        public async void SendAudio(string pathOrUrl, CommandEventArgs e)
         {
             try
             {
-                //TODO make sure this works as a public variable
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
                 procFFMPEG = Process.Start(new ProcessStartInfo
-                { // FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
+                { //FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                     FileName = "ffmpeg",
-                    Arguments = $"-i {pathOrUrl} " + // Here we provide a list of arguments to feed into FFmpeg. -i means the location of the file/URL it will read from
-                                "-f s16le -ar 48000 -ac 2 pipe:1", // Next, we tell it to output 16-bit 48000Hz PCM, over 2 channels, to stdout.
+                    Arguments = $"-i {pathOrUrl} " + //Here we provide a list of arguments to feed into FFmpeg. -i means the location of the file/URL it will read from
+                                "-f s16le -ar 48000 -ac 2 pipe:1", //Next, we tell it to output 16-bit 48000Hz PCM, over 2 channels, to stdout.
                     UseShellExecute = false,
-                    RedirectStandardOutput = true // Capture the stdout of the process
+                    RedirectStandardOutput = true //Capture the stdout of the process
                 });
 
                 procFFMPEG.PriorityBoostEnabled = true;
-                System.Threading.Thread.Sleep(2000); // Sleep for a few seconds to FFmpeg can start processing data.
+                System.Threading.Thread.Sleep(2000); //Sleep for a few seconds to FFmpeg can start processing data.
 
-                int blockSize = 3840; // The size of bytes to read per frame; 1920 for mono
+                int blockSize = 3840; //The size of bytes to read per frame; 1920 for mono
                 byte[] buffer = new byte[blockSize];
                 int byteCount;
 
-                while (audioPlaying) // TODO check to see if user stops the audio playback
+                while (audioPlaying) //Check to see if user stops the audio playback
                 {
-                    byteCount = procFFMPEG.StandardOutput.BaseStream // Access the underlying MemoryStream from the stdout of FFmpeg
-                            .Read(buffer, 0, blockSize); // Read stdout into the buffer
+                    byteCount = procFFMPEG.StandardOutput.BaseStream //Access the underlying MemoryStream from the stdout of FFmpeg
+                            .Read(buffer, 0, blockSize); //Read stdout into the buffer
 
-                    if (byteCount == 0) // FFmpeg did not output anything
-                        break; // Break out of the while(true) loop, since there was nothing to read.
+                    if (byteCount == 0) //FFmpeg did not output anything
+                        break; //Break out of the while(true) loop, since there was nothing to read.
 
-                    vClient.Send(buffer, 0, byteCount); // Send our data to Discord
+                    vClient.Send(buffer, 0, byteCount); //Send our data to Discord
                 }
-                vClient.Wait(); // Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
+                vClient.Wait(); //Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
 
                 if (loop)
                 {
-                    SendAudio(pathOrUrl);
+                    SendAudio(pathOrUrl, e);
+                }
+                else if (audioQueue.Count > 0)
+                {
+                    await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
+                    SendAudio(audioPath + audioQueue.ToArray()[0], e);
+                    audioQueue.RemoveAt(0);
                 }
                 else
                 {
@@ -335,7 +356,7 @@ namespace Bobert
             catch (Exception)
             {
                 ConnectBot();
-                SendAudio(pathOrUrl);
+                SendAudio(pathOrUrl, e);
             }
         }
     }
