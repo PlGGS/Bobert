@@ -163,8 +163,9 @@ namespace Bobert
                 {
                     if (audioQueue.Count > 0)
                     {
+                        audioPlaying = true;
                         await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
-                        SendAudio(audioPath + audioQueue.ToArray()[0], e);
+                        SendAudio(audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())], e);
                         audioQueue.RemoveAt(0);
                     }
                 }
@@ -183,7 +184,7 @@ namespace Bobert
             
             ConnectBot();
         }
-
+        
         private void PlayAudio(CommandEventArgs e)
         {
             audioQuery = e.GetArg("fileName").ToString();
@@ -206,18 +207,9 @@ namespace Bobert
                         audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
                     }
                 }
-                
+
                 SetArrayValues();
-                int fileTypeIndex = -1;
-
-                for (int i = 0; i < fileNames.Length; i++)
-                {
-                    if (fileNames[i] == e.GetArg("fileName"))
-                    {
-                        fileTypeIndex = i;
-                    }
-
-                }
+                int fileTypeIndex = GetFileTypeNum(e.GetArg("fileName"));
 
                 if (!audioQuery.Contains(" "))
                 {
@@ -262,8 +254,22 @@ namespace Bobert
                 }
 
                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
-                //TODO add loop command
             }
+        }
+
+        private int GetFileTypeNum(string fileName)
+        {
+            int fileTypeIndex = -1;
+
+            for (int i = 0; i < fileNames.Length; i++)
+            {
+                if (fileNames[i] == fileName)
+                {
+                    fileTypeIndex = i;
+                }
+            }
+
+            return fileTypeIndex;
         }
 
         private void ConnectBot()
@@ -301,10 +307,14 @@ namespace Bobert
 
             //StreamWriter logger = new StreamWriter(audioPath + "log.txt");
             //logger.WriteLine(e.Message);
+
+            //TODO create a proper loggin system for debugging
         }
 
         public async void SendAudio(string pathOrUrl, CommandEventArgs e)
         {
+            string songBeingPlayed = "";
+
             try
             {
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
@@ -340,11 +350,14 @@ namespace Bobert
                 if (loop)
                 {
                     SendAudio(pathOrUrl, e);
+                    songBeingPlayed = pathOrUrl;
                 }
                 else if (audioQueue.Count > 0)
                 {
                     await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
-                    SendAudio(audioPath + audioQueue.ToArray()[0], e);
+                    SendAudio(audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())], e);
+                    //TODO figure out why it no work after playing queued audio
+                    songBeingPlayed = audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())];
                     audioQueue.RemoveAt(0);
                 }
                 else
@@ -356,7 +369,7 @@ namespace Bobert
             catch (Exception)
             {
                 ConnectBot();
-                SendAudio(pathOrUrl, e);
+                SendAudio(songBeingPlayed, e);
             }
         }
     }
