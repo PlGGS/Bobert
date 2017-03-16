@@ -355,8 +355,8 @@ namespace Bobert
                 }
                 else if (audioQueue.Count > 0)
                 {
-                    await vClient.Disconnect();
-                    vClient.Wait();
+                    //await vClient.Disconnect();
+                    //vClient.Wait();
                     audioPlaying = false;
                     audioQueue.RemoveAt(0);
                     //TODO figure out why you can play a song that doesn't exist after a song is already playing
