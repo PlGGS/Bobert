@@ -144,16 +144,27 @@ namespace Bobert
                 if (audioPlaying && audioQuery != "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
-                    audioPlaying = false;
-                    loop = false;
-                    PlayNextInQueue(e);
+                    audioQueue.ToArray()[0] = audioQuery;
+                    if (audioQueue.Count >= 1)
+                        PlayNextInQueue(e);
+                    else
+                    {
+                        audioPlaying = false;
+                        loop = false;
+                    }
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
-                    audioPlaying = false;
+                    audioQueue.ToArray()[0] = audioQuery;
                     loop = false;
-                    PlayNextInQueue(e);
+                    if (audioQueue.Count >= 1)
+                        PlayNextInQueue(e);
+                    else
+                    {
+                        audioPlaying = false;
+                        loop = false;
+                    }
                 }
                 else
                 {
@@ -166,7 +177,6 @@ namespace Bobert
                         .Do(async (e) =>
                         {
                             Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
-
                             await e.Channel.SendMessage($"{e.User.Name} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
                             //TODO fix this...?
@@ -177,13 +187,9 @@ namespace Bobert
 
         async void PlayNextInQueue(CommandEventArgs e)
         {
-            if (audioQueue.Count > 0)
-            {
-                nextFileInQueue = audioQueue.ToArray()[0].ToString();
-                PlayAudio(false, e);
-                await e.Channel.SendMessage($"Playing: {nextFileInQueue}. {audioQueue.Count - 1} songs left in queue");
-                audioQueue.RemoveAt(0);
-            }
+            nextFileInQueue = audioQueue.ToArray()[0].ToString();
+            await e.Channel.SendMessage($"Playing: {nextFileInQueue}. {audioQueue.Count - 1} songs left in queue");
+            PlayAudio(false, e);
         }
 
         private async void PlayAudio(bool getArg, CommandEventArgs e)
@@ -200,8 +206,8 @@ namespace Bobert
             //TODO check if this if statement breaks random audio playback
             if (audioQuery == "random")
                 rnd = randomize.Next(0, allFiles.Length);
-
-            if ((!audioPlaying && getArg) || (audioPlaying && !getArg))
+            
+            if ((audioPlaying == false && getArg) || (audioPlaying && getArg == false))
             {
                 SetArrayValues();
                 int fileTypeIndex = GetFileTypeNum(audioQuery);
@@ -224,15 +230,16 @@ namespace Bobert
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
-                    await e.Channel.SendMessage("audio playing: " + audioPlaying);
-                    await e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                    if (getArg == true)
+                        await e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
                     SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
                 else if (audioQuery == "random")
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
-                    await e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    if (getArg == true)
+                        await e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
@@ -250,11 +257,6 @@ namespace Bobert
             {
                 audioQueue.Add(audioQuery);
                 await e.Channel.SendMessage($"{e.User.Name} added {audioQuery} to the queue");
-            }
-
-            async Task Play()
-            {
-                
             }
         }
         
@@ -318,6 +320,7 @@ namespace Bobert
             {
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
+                await e.Channel.SendMessage(pathOrUrl);
                 procFFMPEG = Process.Start(new ProcessStartInfo
                 { //FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                     FileName = "ffmpeg",
@@ -349,13 +352,15 @@ namespace Bobert
                 if (loop)
                 {
                     SendAudio(pathOrUrl, e);
-                    //songBeingPlayed = pathOrUrl;
                 }
                 else if (audioQueue.Count > 0)
                 {
+                    await vClient.Disconnect();
+                    vClient.Wait();
                     audioPlaying = false;
+                    audioQueue.RemoveAt(0);
+                    //TODO figure out why you can play a song that doesn't exist after a song is already playing
                     PlayNextInQueue(e);
-                    //songBeingPlayed = audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())];
                 }
                 else
                 {
