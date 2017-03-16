@@ -141,12 +141,16 @@ namespace Bobert
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
                         .Do(async (e) =>
             {
+                await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
                 if (audioPlaying && audioQuery != "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
                     audioQueue.ToArray()[0] = audioQuery;
                     if (audioQueue.Count >= 1)
+                    {
+                        audioPlaying = false;
                         PlayNextInQueue(e);
+                    }
                     else
                     {
                         audioPlaying = false;
@@ -157,9 +161,11 @@ namespace Bobert
                 {
                     await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
                     audioQueue.ToArray()[0] = audioQuery;
-                    loop = false;
                     if (audioQueue.Count >= 1)
+                    {
+                        audioPlaying = false;
                         PlayNextInQueue(e);
+                    }
                     else
                     {
                         audioPlaying = false;
@@ -232,6 +238,8 @@ namespace Bobert
                     currentAudio = audioQuery;
                     if (getArg == true)
                         await e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                    if (getArg == false)
+                        audioQueue.RemoveAt(0);
                     SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
                 else if (audioQuery == "random")
@@ -240,6 +248,8 @@ namespace Bobert
                     currentAudio = audioQuery;
                     if (getArg == true)
                         await e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    if (getArg == false)
+                        audioQueue.RemoveAt(0);
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
@@ -348,6 +358,7 @@ namespace Bobert
                     vClient.Send(buffer, 0, byteCount); //Send our data to Discord
                 }
                 vClient.Wait(); //Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
+                procFFMPEG.Kill();
 
                 if (loop)
                 {
@@ -358,7 +369,6 @@ namespace Bobert
                     //await vClient.Disconnect();
                     //vClient.Wait();
                     audioPlaying = false;
-                    audioQueue.RemoveAt(0);
                     //TODO figure out why you can play a song that doesn't exist after a song is already playing
                     PlayNextInQueue(e);
                 }
