@@ -102,7 +102,7 @@ namespace Bobert
                         .Parameter("amt", ParameterType.Required)
                         .Do(async (e) =>
                         {
-                            await e.Channel.SendMessage($"{e.User.Name} changed the volume to: {e.GetArg("amt")}");
+                            await e.Channel.SendMessage($"@{e.User.Name} changed the volume to: {e.GetArg("amt")}");
                             await procFFMPEG.StandardInput.WriteLineAsync($"ffmpeg -f lavfi -i \"amovie = {currentFile}, volume = { e.GetArg("amt")}\" {currentFile}");
                             await e.Channel.SendMessage("Command sent without error");
 
@@ -142,21 +142,21 @@ namespace Bobert
             {
                 if (audioPlaying && audioQuery != "random")
                 {
-                    await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
+                    await e.Channel.SendMessage($"@{e.User.Name} stopped: {currentAudio}");
                     audioPlaying = false;
                     loop = false;
                     playNextInQueue();
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
-                    await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
+                    await e.Channel.SendMessage($"@{e.User.Name} stopped the random playback of {fileNames[rnd]}");
                     audioPlaying = false;
                     loop = false;
                     playNextInQueue();
                 }
                 else
                 {
-                    await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
+                    await e.Channel.SendFile($"@{e.User.Name} tried to stop current audio. Nothing was playing...");
                 }
 
                 async void playNextInQueue()
@@ -177,7 +177,7 @@ namespace Bobert
                         {
                             Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
 
-                            await e.Channel.SendMessage($"{e.User.Name} set the volume to {e.GetArg("volPercent")}");
+                            await e.Channel.SendMessage($"@{e.User.Name} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
                             //TODO fix this...?
                         });
@@ -196,7 +196,7 @@ namespace Bobert
             if (audioPlaying)
             {
                 audioQueue.Add(audioQuery);
-                e.Channel.SendMessage($"{e.User.Name} added {audioQuery} to the queue");
+                e.Channel.SendMessage($"@{e.User.Name} added {audioQuery} to the queue");
             }
             else
             {
@@ -236,7 +236,7 @@ namespace Bobert
                     audioPlaying = true;
                     currentAudio = e.GetArg("fileName");
 
-                    e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                    e.Channel.SendMessage($"@{e.User.Name} played: {audioQuery}");
                     currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
                     SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex], e);
                 }
@@ -245,12 +245,12 @@ namespace Bobert
                     audioPlaying = true;
                     currentAudio = e.GetArg("fileName");
 
-                    e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    e.Channel.SendMessage($"@{e.User.Name} played a random audio file ({fileNames[rnd]})");
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
                 {
-                    e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                    e.Channel.SendMessage($"Sadly, @{e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
                 }
 
                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
