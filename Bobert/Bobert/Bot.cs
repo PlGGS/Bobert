@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Bobert
 {
@@ -40,7 +41,7 @@ namespace Bobert
         bool audioPlaying = false;
         bool loop = false;
         string currentAudio = "";
-        string currentFile = "";
+        string nextFileInQueue = "";
         ArrayList audioQueue = new ArrayList();
 
         public Bot()
@@ -102,8 +103,8 @@ namespace Bobert
                         .Parameter("amt", ParameterType.Required)
                         .Do(async (e) =>
                         {
-                            await e.Channel.SendMessage($"@{e.User.Name} changed the volume to: {e.GetArg("amt")}");
-                            await procFFMPEG.StandardInput.WriteLineAsync($"ffmpeg -f lavfi -i \"amovie = {currentFile}, volume = { e.GetArg("amt")}\" {currentFile}");
+                            await e.Channel.SendMessage($"{e.User.Name} changed the volume to: {e.GetArg("amt")}");
+                            await procFFMPEG.StandardInput.WriteLineAsync($"ffmpeg -f lavfi -i \"amovie = {currentAudio + fileTypes[GetFileTypeNum(currentAudio)]}, volume = { e.GetArg("amt")}\" {currentAudio + fileTypes[GetFileTypeNum(currentAudio)]}");
                             await e.Channel.SendMessage("Command sent without error");
 
                             if (audioPlaying)
@@ -124,7 +125,7 @@ namespace Bobert
                         .Do(e =>
                         {
                             loop = false;
-                            PlayAudio(e);
+                            PlayAudio(true, e);
                         });
 
             cmds.CreateCommand("loop")
@@ -134,40 +135,46 @@ namespace Bobert
                         .Do(e =>
                         {
                             loop = true;
-                            PlayAudio(e);
+                            PlayAudio(true, e);
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
                         .Do(async (e) =>
             {
+                await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
                 if (audioPlaying && audioQuery != "random")
                 {
-                    await e.Channel.SendMessage($"@{e.User.Name} stopped: {currentAudio}");
-                    audioPlaying = false;
-                    loop = false;
-                    playNextInQueue();
+                    await e.Channel.SendMessage($"{e.User.Name} stopped: {currentAudio}");
+                    audioQueue.ToArray()[0] = audioQuery;
+                    if (audioQueue.Count >= 1)
+                    {
+                        audioPlaying = false;
+                        PlayNextInQueue(e);
+                    }
+                    else
+                    {
+                        audioPlaying = false;
+                        loop = false;
+                    }
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
-                    await e.Channel.SendMessage($"@{e.User.Name} stopped the random playback of {fileNames[rnd]}");
-                    audioPlaying = false;
-                    loop = false;
-                    playNextInQueue();
+                    await e.Channel.SendMessage($"{e.User.Name} stopped the random playback of {fileNames[rnd]}");
+                    audioQueue.ToArray()[0] = audioQuery;
+                    if (audioQueue.Count >= 1)
+                    {
+                        audioPlaying = false;
+                        PlayNextInQueue(e);
+                    }
+                    else
+                    {
+                        audioPlaying = false;
+                        loop = false;
+                    }
                 }
                 else
                 {
-                    await e.Channel.SendFile($"@{e.User.Name} tried to stop current audio. Nothing was playing...");
-                }
-
-                async void playNextInQueue()
-                {
-                    if (audioQueue.Count > 0)
-                    {
-                        audioPlaying = true;
-                        await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
-                        SendAudio(audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())], e);
-                        audioQueue.RemoveAt(0);
-                    }
+                    await e.Channel.SendFile($"{e.User.Name} tried to stop current audio. Nothing was playing...");
                 }
             });
 
@@ -176,87 +183,93 @@ namespace Bobert
                         .Do(async (e) =>
                         {
                             Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
-
-                            await e.Channel.SendMessage($"@{e.User.Name} set the volume to {e.GetArg("volPercent")}");
+                            await e.Channel.SendMessage($"{e.User.Name} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
                             //TODO fix this...?
                         });
             
             ConnectBot();
         }
-        
-        private void PlayAudio(CommandEventArgs e)
+
+        async void PlayNextInQueue(CommandEventArgs e)
         {
-            audioQuery = e.GetArg("fileName").ToString();
+            nextFileInQueue = audioQueue.ToArray()[0].ToString();
+            await e.Channel.SendMessage($"Playing: {nextFileInQueue}. {audioQueue.Count - 1} songs left in queue");
+            PlayAudio(false, e);
+        }
+
+        private async void PlayAudio(bool getArg, CommandEventArgs e)
+        {
+            if (getArg)
+            {
+                audioQuery = e.GetArg("fileName").ToString();
+            }
+            else
+            {
+                audioQuery = nextFileInQueue;
+            }
 
             //TODO check if this if statement breaks random audio playback
             if (audioQuery == "random")
                 rnd = randomize.Next(0, allFiles.Length);
-
-            if (audioPlaying)
+            
+            if ((audioPlaying == false && getArg) || (audioPlaying && getArg == false))
             {
-                audioQueue.Add(audioQuery);
-                e.Channel.SendMessage($"@{e.User.Name} added {audioQuery} to the queue");
-            }
-            else
-            {
-                foreach (char element in e.GetArg("fileName"))
-                {
-                    if (element == '_')
-                    {
-                        audioQuery = e.GetArg("fileName").ToString().Replace('_', ' ');
-                    }
-                }
-
                 SetArrayValues();
-                int fileTypeIndex = GetFileTypeNum(e.GetArg("fileName"));
-
-                if (!audioQuery.Contains(" "))
-                {
-                    audioQuery = e.GetArg("fileName");
-                }
-                else
-                {
-                    e.Channel.SendMessage("Please make sure there are no spaces in the file name you wish to play");
-                }
+                int fileTypeIndex = GetFileTypeNum(audioQuery);
 
                 serverName = e.User.Server.Name;
 
-                try
+                if (getArg)
                 {
-                    channelName = e.User.VoiceChannel.Name;
-                }
-                catch (NullReferenceException)
-                {
-                    e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                    try
+                    {
+                        channelName = e.User.VoiceChannel.Name;
+                    }
+                    catch (NullReferenceException)
+                    {
+                        await e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                    }
                 }
 
                 if (fileTypeIndex != -1)
                 {
                     audioPlaying = true;
-                    currentAudio = e.GetArg("fileName");
-
-                    e.Channel.SendMessage($"@{e.User.Name} played: {audioQuery}");
-                    currentFile = e.GetArg("fileName") + fileTypes[fileTypeIndex];
-                    SendAudio(audioPath + e.GetArg("fileName") + fileTypes[fileTypeIndex], e);
+                    currentAudio = audioQuery;
+                    if (getArg == true)
+                        await e.Channel.SendMessage($"{e.User.Name} played: {audioQuery}");
+                    if (getArg == false)
+                        audioQueue.RemoveAt(0);
+                    SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
                 else if (audioQuery == "random")
                 {
                     audioPlaying = true;
-                    currentAudio = e.GetArg("fileName");
-
-                    e.Channel.SendMessage($"@{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    currentAudio = audioQuery;
+                    if (getArg == true)
+                        await e.Channel.SendMessage($"{e.User.Name} played a random audio file ({fileNames[rnd]})");
+                    if (getArg == false)
+                        audioQueue.RemoveAt(0);
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
                 {
-                    e.Channel.SendMessage($"Sadly, @{e.User.Name} tried to play an audio file that doesn't exist. Use /listFiles for a list of items to play");
+                    await e.Channel.SendMessage($"Sadly, {e.User.Name} tried to play an audio file that doesn't exist. ({audioQuery}) Use /listFiles for a list of items to play");
+                }
+                else
+                {
+                    await e.Channel.SendMessage("fileTypeIndex: " + fileTypeIndex);
                 }
 
                 //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
             }
+            else if (audioPlaying && getArg)
+            {
+                audioQueue.Add(audioQuery);
+                await e.Channel.SendMessage($"{e.User.Name} added {audioQuery} to the queue");
+            }
         }
-
+        
         private int GetFileTypeNum(string fileName)
         {
             int fileTypeIndex = -1;
@@ -313,12 +326,11 @@ namespace Bobert
 
         public async void SendAudio(string pathOrUrl, CommandEventArgs e)
         {
-            string songBeingPlayed = "";
-
             try
             {
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
+                await e.Channel.SendMessage(pathOrUrl);
                 procFFMPEG = Process.Start(new ProcessStartInfo
                 { //FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                     FileName = "ffmpeg",
@@ -346,19 +358,19 @@ namespace Bobert
                     vClient.Send(buffer, 0, byteCount); //Send our data to Discord
                 }
                 vClient.Wait(); //Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
+                procFFMPEG.Kill();
 
                 if (loop)
                 {
                     SendAudio(pathOrUrl, e);
-                    songBeingPlayed = pathOrUrl;
                 }
                 else if (audioQueue.Count > 0)
                 {
-                    await e.Channel.SendMessage($"Playing: {audioQueue.ToArray()[0]}. {audioQueue.Count - 1} songs left in queue");
-                    SendAudio(audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())], e);
-                    //TODO figure out why it no work after playing queued audio
-                    songBeingPlayed = audioPath + audioQueue.ToArray()[0] + fileTypes[GetFileTypeNum(audioQueue.ToArray()[0].ToString())];
-                    audioQueue.RemoveAt(0);
+                    //await vClient.Disconnect();
+                    //vClient.Wait();
+                    audioPlaying = false;
+                    //TODO figure out why you can play a song that doesn't exist after a song is already playing
+                    PlayNextInQueue(e);
                 }
                 else
                 {
@@ -369,7 +381,7 @@ namespace Bobert
             catch (Exception)
             {
                 ConnectBot();
-                SendAudio(songBeingPlayed, e);
+                SendAudio(currentAudio, e);
             }
         }
     }
