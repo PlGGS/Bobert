@@ -66,7 +66,7 @@ namespace Bobert
             });
 
             cmds = client.GetService<CommandService>();
-
+            
             cmds.CreateCommand("help")
                         .Alias(new string[] {"h"})
                         .Do(async (e) =>
@@ -146,16 +146,9 @@ namespace Bobert
                 {
                     await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
                     audioQueue.ToArray()[0] = audioQuery;
-                    if (audioQueue.Count >= 1)
-                    {
-                        audioPlaying = false;
-                        PlayNextInQueue(e);
-                    }
-                    else
-                    {
-                        audioPlaying = false;
-                        loop = false;
-                    }
+                    //TODO add for loop to place audioQueue.ToArray()[1] as audioQueue.ToArray()[0] and so on whilst deleting the old audioQueue.ToArray()[0]
+                    audioPlaying = false;
+                    loop = false;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
@@ -208,8 +201,7 @@ namespace Bobert
             {
                 audioQuery = nextFileInQueue;
             }
-
-            //TODO check if this if statement breaks random audio playback
+            
             if (audioQuery == "random")
                 rnd = randomize.Next(0, allFiles.Length);
             
@@ -254,6 +246,8 @@ namespace Bobert
                 }
                 else if (audioQuery != "random")
                 {
+                    if (getArg == false)
+                        audioQueue.RemoveAt(0);
                     await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file that doesn't exist. ({audioQuery}) Use /listFiles for a list of items to play");
                 }
                 else
@@ -321,7 +315,7 @@ namespace Bobert
             //StreamWriter logger = new StreamWriter(audioPath + "log.txt");
             //logger.WriteLine(e.Message);
 
-            //TODO create a proper loggin system for debugging
+            //TODO create a proper logging system for debugging
         }
 
         public async void SendAudio(string pathOrUrl, CommandEventArgs e)
@@ -366,8 +360,8 @@ namespace Bobert
                 }
                 else if (audioQueue.Count > 0)
                 {
-                    //await vClient.Disconnect();
-                    //vClient.Wait();
+                    await vClient.Disconnect();
+                    vClient.Wait();
                     audioPlaying = false;
                     //TODO figure out why you can play a song that doesn't exist after a song is already playing
                     PlayNextInQueue(e);
