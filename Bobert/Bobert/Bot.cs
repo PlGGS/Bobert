@@ -142,17 +142,29 @@ namespace Bobert
                         .Do(async (e) =>
             {
                 await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
-                if (audioPlaying && audioQuery != "random")
+
+                if (audioPlaying == false)
                 {
-                    await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
-                    audioQueue.ToArray()[0] = audioQuery;
+                    await e.Channel.SendMessage($"{e.User.Mention} tried to stop current audio. Nothing was playing...");
+                }
+                else if (audioPlaying && audioQuery != "random")
+                {
+                    if (audioQuery == "random")
+                    {
+                        await e.Channel.SendMessage($"{e.User.Mention} stopped the random playback of {fileNames[rnd]}");
+                    }
+                    else
+                    {
+                        await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
+                    }
+
                     //TODO add for loop to place audioQueue.ToArray()[1] as audioQueue.ToArray()[0] and so on whilst deleting the old audioQueue.ToArray()[0]
                     audioPlaying = false;
                     loop = false;
+                    audioQueue.ToArray()[0] = audioQuery;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
-                    await e.Channel.SendMessage($"{e.User.Mention} stopped the random playback of {fileNames[rnd]}");
                     audioQueue.ToArray()[0] = audioQuery;
                     if (audioQueue.Count >= 1)
                     {
@@ -164,10 +176,6 @@ namespace Bobert
                         audioPlaying = false;
                         loop = false;
                     }
-                }
-                else
-                {
-                    await e.Channel.SendFile($"{e.User.Mention} tried to stop current audio. Nothing was playing...");
                 }
             });
 
@@ -352,7 +360,6 @@ namespace Bobert
                     vClient.Send(buffer, 0, byteCount); //Send our data to Discord
                 }
                 vClient.Wait(); //Wait for the Voice Client to finish sending data, as ffMPEG may have already finished buffering out a song, and it is unsafe to return now.
-                procFFMPEG.Kill();
 
                 if (loop)
                 {
