@@ -122,20 +122,34 @@ namespace Bobert
                         .Alias(new string[] { "pl", "p" })
                         .Description("Plays a file's audio from Pinhead's DropBox directory.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(e =>
+                        .Do(async e =>
                         {
-                            loop = false;
-                            PlayAudio(true, e);
+                            if (e.User.VoiceChannel != null)
+                            {
+                                loop = false;
+                                PlayAudio(true, e);
+                            }
+                            else
+                            {
+                                await e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                            }
                         });
 
             cmds.CreateCommand("loop")
                         .Alias(new string[] { "l" })
                         .Description("Loops a file's audio from Pinhead's DropBox directory until someone uses the /stop command.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(e =>
+                        .Do(async e =>
                         {
-                            loop = true;
-                            PlayAudio(true, e);
+                            if (e.User.VoiceChannel != null)
+                            {
+                                loop = true;
+                                PlayAudio(true, e);
+                            }
+                            else
+                            {
+                                await e.Channel.SendMessage("Please join a voice channel before attempting to loop audio");
+                            }
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
