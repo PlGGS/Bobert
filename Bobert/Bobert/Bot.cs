@@ -117,7 +117,7 @@ namespace Bobert
                         .Alias(new string[] { "pl", "p" })
                         .Description("Plays a file's audio from Pinhead's DropBox directory.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(e =>
+                        .Do(async e =>
                         {
                             loop = false;
                             PlayAudio(e);
@@ -127,7 +127,7 @@ namespace Bobert
                         .Alias(new string[] { "l" })
                         .Description("Loops a file's audio from Pinhead's DropBox directory until someone uses the /stop command.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(e =>
+                        .Do(async e =>
                         {
                             loop = true;
                             PlayAudio(e);
@@ -143,6 +143,7 @@ namespace Bobert
                     //TODO add for loop to place audioQueue.ToArray()[1] as audioQueue.ToArray()[0] and so on whilst deleting the old audioQueue.ToArray()[0]
                     audioPlaying = false;
                     loop = false;
+                    audioQueue.ToArray()[0] = audioQuery;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
