@@ -31,7 +31,6 @@ namespace Bobert
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
         string[] fileTypes = Directory.GetFiles(audioPath); //file type
-        string[] audioFiles; //TODO make an array of all audioFiles that is the correct length
         string[] commands = new string[] {"play [pl, p]: Plays a specified audio file one time",
                                           "loop [l]: Repeatedly plays a specified audio file",
                                           "stop [skip]: Stops a currently playing audio file",
@@ -43,8 +42,10 @@ namespace Bobert
         bool audioPlaying = false;
         bool loop = false;
         string currentAudio = "";
-        string nextFileInQueue = "";
-        ArrayList audioQueue = new ArrayList();
+        List<string> queue = new List<string>(); //TODO add audioQueue
+        TicTacToe game;
+        Timer timReady = new Timer(30000);
+        bool gameInProgress = false;
 
         public Bot()
         {
@@ -128,14 +129,15 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(async e =>
                         {
-                            if (e.User.VoiceChannel != null)
+                            if (audioPlaying == false)
                             {
                                 loop = false;
-                                PlayAudio(true, e);
+                                audioQuery = e.GetArg("fileName");
+                                PlayAudio(e);
                             }
                             else
                             {
-                                await e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                                e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop the current audio before playing another song");
                             }
                         });
 
@@ -145,55 +147,30 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do(async e =>
                         {
-                            if (e.User.VoiceChannel != null)
-                            {
-                                loop = true;
-                                PlayAudio(true, e);
-                            }
-                            else
-                            {
-                                await e.Channel.SendMessage("Please join a voice channel before attempting to loop audio");
-                            }
+                            loop = true;
+                            audioQuery = e.GetArg("fileName");
+                            PlayAudio(e);
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
                         .Do(async (e) =>
             {
                 await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
-
-                if (audioPlaying == false)
+                if (audioPlaying && audioQuery != "random")
                 {
-                    await e.Channel.SendMessage($"{e.User.Mention} tried to stop current audio. Nothing was playing...");
-                }
-                else if (audioPlaying && audioQuery != "random")
-                {
-                    if (audioQuery == "random")
-                    {
-                        await e.Channel.SendMessage($"{e.User.Mention} stopped the random playback of {fileNames[rnd]}");
-                    }
-                    else
-                    {
-                        await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
-                    }
-
-                    //TODO add for loop to place audioQueue.ToArray()[1] as audioQueue.ToArray()[0] and so on whilst deleting the old audioQueue.ToArray()[0]
+                    await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
                     audioPlaying = false;
                     loop = false;
-                    audioQueue.ToArray()[0] = audioQuery;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
-                    audioQueue.ToArray()[0] = audioQuery;
-                    if (audioQueue.Count >= 1)
-                    {
-                        audioPlaying = false;
-                        PlayNextInQueue(e);
-                    }
-                    else
-                    {
-                        audioPlaying = false;
-                        loop = false;
-                    }
+                    await e.Channel.SendMessage($"{e.User.Mention} stopped the random playback of {fileNames[rnd]}");
+                    audioPlaying = false;
+                    loop = false;
+                }
+                else
+                {
+                    await e.Channel.SendFile($"{e.User.Mention} tried to stop current audio. Nothing was playing...");
                 }
             });
 
@@ -204,92 +181,87 @@ namespace Bobert
                             Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
                             await e.Channel.SendMessage($"{e.User.Mention} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
-                            //TODO find out whether or not changing the process volume in Windows actually affects playback in discord
+                            //TODO fix this...?
                         });
-            
+
+            cmds.CreateCommand("game")
+                        .Parameter("game", ParameterType.Required)
+                        .Parameter("otherPlayer", ParameterType.Required)
+                        .Do(e =>
+                        {
+                            if (gameInProgress == false)
+                            {
+                                if (e.GetArg("game") == "tic" ||
+                                   e.GetArg("game") == "tac" ||
+                                   e.GetArg("game") == "toe")
+                                {
+                                    game = new TicTacToe(client, cmds);
+                                    e.Channel.SendMessage($"@{e.GetArg("otherPlayer")}, if you wish to play tic-tac-toe with {e.User.Mention}, enter 'tic {e.User.Name} ready'");
+                                    timReady.Start();
+                                    timReady.Elapsed += new ElapsedEventHandler(timReady_Tick);
+                                    void timReady_Tick(object sender, ElapsedEventArgs newE)
+                                    {
+                                        e.Channel.SendMessage($"@{e.GetArg("otherPlayer")} failed to prepare for the game in time. Disposing of the new game object");
+                                    }
+                                    gameInProgress = true;
+                                }
+                            }
+                        });
+
+            cmds.CreateCommand("tic").Alias(new string[] { "tac", "toe" })
+                        .Parameter("inviter", ParameterType.Required)
+                        .Parameter("action", ParameterType.Required)
+                        .Do(e =>
+                        {
+                            if (e.GetArg("action") == "ready")
+                            {
+                                game.Start(e.GetArg("inviter"), e.User.Name, e);
+                            }
+                        });
+
             ConnectBot();
         }
 
-        async void PlayNextInQueue(CommandEventArgs e)
+        private async void PlayAudio(CommandEventArgs e)
         {
-            nextFileInQueue = audioQueue.ToArray()[0].ToString();
-            await e.Channel.SendMessage($"Playing: {nextFileInQueue}. {audioQueue.Count - 1} songs left in queue");
-            PlayAudio(false, e);
-        }
-
-        private async void PlayAudio(bool getArg, CommandEventArgs e)
-        {
-            if (getArg)
-            {
-                audioQuery = e.GetArg("fileName").ToString();
-            }
-            else
-            {
-                audioQuery = nextFileInQueue;
-            }
-            
             if (audioQuery == "random")
                 rnd = randomize.Next(0, allFiles.Length);
-            
-            if ((audioPlaying == false && getArg) || (audioPlaying && getArg == false))
+
+            SetArrayValues();
+            int fileTypeIndex = GetFileTypeNum(audioQuery);
+
+            serverName = e.User.Server.Name;
+
+            try
             {
-                SetArrayValues();
-                int fileTypeIndex = GetFileTypeNum(audioQuery);
-
-                serverName = e.User.Server.Name;
-
-                if (getArg)
-                {
-                    try
-                    {
-                        channelName = e.User.VoiceChannel.Name;
-                    }
-                    catch (NullReferenceException)
-                    {
-                        await e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
-                    }
-                }
+                channelName = e.User.VoiceChannel.Name;
 
                 if (fileTypeIndex != -1)
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
-                    if (getArg == true)
-                        await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
-                    if (getArg == false)
-                        audioQueue.RemoveAt(0);
+                    await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
                     SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
                 else if (audioQuery == "random")
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
-                    if (getArg == true)
-                        await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
-                    if (getArg == false)
-                        audioQueue.RemoveAt(0);
+                    await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
                 else if (audioQuery != "random")
                 {
-                    if (getArg == false)
-                        audioQueue.RemoveAt(0);
                     await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file that doesn't exist. ({audioQuery}) Use /listFiles for a list of items to play");
                 }
-                else
-                {
-                    await e.Channel.SendMessage("fileTypeIndex: " + fileTypeIndex);
-                }
-
-                //SendAudio(videoSearchItems.SearchQuery(e.GetArg("videoName"), 1)[0].Url); //OLD WAY OF FINDING YOUTUBE VIDEOS
             }
-            else if (audioPlaying && getArg)
+            catch (NullReferenceException)
             {
-                audioQueue.Add(audioQuery);
-                await e.Channel.SendMessage($"{e.User.Mention} added {audioQuery} to the queue");
+                await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file while not in a voice channel");
             }
+
         }
-        
+
         private int GetFileTypeNum(string fileName)
         {
             int fileTypeIndex = -1;
@@ -377,14 +349,6 @@ namespace Bobert
                 if (loop)
                 {
                     SendAudio(pathOrUrl, e);
-                }
-                else if (audioQueue.Count > 0)
-                {
-                    await vClient.Disconnect();
-                    vClient.Wait();
-                    audioPlaying = false;
-                    //TODO figure out why you can play a song that doesn't exist after a song is already playing
-                    PlayNextInQueue(e);
                 }
                 else
                 {
