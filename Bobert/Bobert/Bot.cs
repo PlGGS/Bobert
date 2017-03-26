@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Globalization;
+using System.Collections.Generic;
+using System.Timers;
 
 namespace Bobert
 {
@@ -38,6 +40,10 @@ namespace Bobert
         bool audioPlaying = false;
         bool loop = false;
         string currentAudio = "";
+        List<string> queue = new List<string>(); //TODO add audioQueue
+        TicTacToe game;
+        Timer timReady = new Timer(30000);
+        bool gameInProgress = false;
 
         public Bot()
         {
@@ -117,19 +123,28 @@ namespace Bobert
                         .Alias(new string[] { "pl", "p" })
                         .Description("Plays a file's audio from Pinhead's DropBox directory.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(async e =>
+                        .Do(e =>
                         {
-                            loop = false;
-                            PlayAudio(e);
+                            if (audioPlaying == false)
+                            {
+                                loop = false;
+                                audioQuery = e.GetArg("fileName");
+                                PlayAudio(e);
+                            }
+                            else
+                            {
+                                e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop the current audio before playing another song");
+                            }
                         });
 
             cmds.CreateCommand("loop")
                         .Alias(new string[] { "l" })
                         .Description("Loops a file's audio from Pinhead's DropBox directory until someone uses the /stop command.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(async e =>
+                        .Do(e =>
                         {
                             loop = true;
+                            audioQuery = e.GetArg("fileName");
                             PlayAudio(e);
                         });
 
@@ -140,10 +155,8 @@ namespace Bobert
                 if (audioPlaying && audioQuery != "random")
                 {
                     await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
-                    //TODO add for loop to place audioQueue.ToArray()[1] as audioQueue.ToArray()[0] and so on whilst deleting the old audioQueue.ToArray()[0]
                     audioPlaying = false;
                     loop = false;
-                    audioQueue.ToArray()[0] = audioQuery;
                 }
                 else if (audioPlaying && audioQuery == "random")
                 {
@@ -166,10 +179,45 @@ namespace Bobert
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
                             //TODO fix this...?
                         });
-            
+
+            cmds.CreateCommand("game")
+                        .Parameter("game", ParameterType.Required)
+                        .Parameter("otherPlayer", ParameterType.Required)
+                        .Do(e =>
+                        {
+                            if (gameInProgress == false)
+                            {
+                                if (e.GetArg("game") == "tic" ||
+                                   e.GetArg("game") == "tac" ||
+                                   e.GetArg("game") == "toe")
+                                {
+                                    game = new TicTacToe(client, cmds);
+                                    e.Channel.SendMessage($"@{e.GetArg("otherPlayer")}, if you wish to play tic-tac-toe with {e.User.Mention}, enter 'tic {e.User.Name} ready'");
+                                    timReady.Start();
+                                    timReady.Elapsed += new ElapsedEventHandler(timReady_Tick);
+                                    void timReady_Tick(object sender, ElapsedEventArgs newE)
+                                    {
+                                        e.Channel.SendMessage($"@{e.GetArg("otherPlayer")} failed to prepare for the game in time. Disposing of the new game object");
+                                    }
+                                    gameInProgress = true;
+                                }
+                            }
+                        });
+
+            cmds.CreateCommand("tic").Alias(new string[] { "tac", "toe" })
+                        .Parameter("inviter", ParameterType.Required)
+                        .Parameter("action", ParameterType.Required)
+                        .Do(e =>
+                        {
+                            if (e.GetArg("action") == "ready")
+                            {
+                                game.Start(e.GetArg("inviter"), e.User.Name, e);
+                            }
+                        });
+
             ConnectBot();
         }
-        
+
         private async void PlayAudio(CommandEventArgs e)
         {
             if (audioQuery == "random")
@@ -183,30 +231,31 @@ namespace Bobert
             try
             {
                 channelName = e.User.VoiceChannel.Name;
+
+                if (fileTypeIndex != -1)
+                {
+                    audioPlaying = true;
+                    currentAudio = audioQuery;
+                    await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
+                    SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
+                }
+                else if (audioQuery == "random")
+                {
+                    audioPlaying = true;
+                    currentAudio = audioQuery;
+                    await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
+                    SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
+                }
+                else if (audioQuery != "random")
+                {
+                    await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file that doesn't exist. ({audioQuery}) Use /listFiles for a list of items to play");
+                }
             }
             catch (NullReferenceException)
             {
-                await e.Channel.SendMessage("Please join a voice channel before attempting to play audio");
+                await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file while not in a voice channel");
             }
 
-            if (fileTypeIndex != -1)
-            {
-                audioPlaying = true;
-                currentAudio = audioQuery;
-                await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
-                SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
-            }
-            else if (audioQuery == "random")
-            {
-                audioPlaying = true;
-                currentAudio = audioQuery;
-                await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
-                SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
-            }
-            else if (audioQuery != "random")
-            {
-                await e.Channel.SendMessage($"Sadly, {e.User.Mention} tried to play an audio file that doesn't exist. ({audioQuery}) Use /listFiles for a list of items to play");
-            }
         }
 
         private int GetFileTypeNum(string fileName)
@@ -269,7 +318,7 @@ namespace Bobert
             {
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
 
-                await e.Channel.SendMessage(pathOrUrl);
+                await e.Channel.SendMessage(pathOrUrl); //TODO remove this when satisfied with audio playback
                 procFFMPEG = Process.Start(new ProcessStartInfo
                 { //FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                     FileName = "ffmpeg",
