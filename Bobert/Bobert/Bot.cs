@@ -53,7 +53,6 @@ namespace Bobert
             client = new DiscordClient(input =>
             {
                 input.LogLevel = LogSeverity.Info;
-                input.LogHandler = Log;
                 SetArrayValues();
             });
 
@@ -69,11 +68,17 @@ namespace Bobert
                 x.Channels = 2;
             });
 
-            client.Log.Message += (s, e) => Log(s, e);
+            client.Log.Message += (s, e) => LogBot(s, e);
+            client.MessageReceived += (s, e) => LogChat(s, e);
 
-            void Log(object sender, LogMessageEventArgs e)
+            void LogBot(object sender, LogMessageEventArgs e)
             {
                 File.AppendAllText(logFileLocation, $"[{e.Severity}] | {e.Source}: {e.Message}");
+            }
+
+            void LogChat(object sender, MessageEventArgs e)
+            {
+                File.AppendAllText(logFileLocation, $"{e.Channel} | {e.User.Name}: {e.Message}");
             }
 
             cmds = client.GetService<CommandService>();
