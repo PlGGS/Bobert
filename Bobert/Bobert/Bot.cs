@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Globalization;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Bobert
@@ -25,6 +26,7 @@ namespace Bobert
         IAudioClient vClient;
         Process procFFMPEG;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase) + "log.txt";
         string audioQuery = "";
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
@@ -65,6 +67,8 @@ namespace Bobert
                 x.Channels = 2;
             });
 
+            client.Log.Message += (s, e) => Log(s, e);
+            
             cmds = client.GetService<CommandService>();
             
             cmds.CreateCommand("help")
@@ -200,7 +204,7 @@ namespace Bobert
                             Process tmpProc = Process.GetProcessesByName("ffmpeg").First();
                             await e.Channel.SendMessage($"{e.User.Mention} set the volume to {e.GetArg("volPercent")}");
                             await VolumeMixer.SetApplicationVolume(tmpProc.Id, float.Parse(e.GetArg("volPercent"), CultureInfo.InvariantCulture.NumberFormat));
-                            //TODO fix this...?
+                            //TODO find out whether or not changing the process volume in Windows actually affects playback in discord
                         });
             
             ConnectBot();
@@ -327,17 +331,13 @@ namespace Bobert
 
         private void Log(object sender, LogMessageEventArgs e)
         {
-            Console.WriteLine(e.Message);
+            if (!File.Exists(logFileLocation))
+            {
+                File.Create(logFileLocation);
+            }
 
-            //if (!File.Exists(audioPath + "log.txt"))
-            //{
-            //    File.Create(audioPath + "log.txt");
-            //}
-
-            //StreamWriter logger = new StreamWriter(audioPath + "log.txt");
-            //logger.WriteLine(e.Message);
-
-            //TODO create a proper logging system for debugging
+            StreamWriter logger = new StreamWriter(logFileLocation);
+            logger.WriteLine($"[{e.Severity}] | {e.Source}: {e.Message}");
         }
 
         public async void SendAudio(string pathOrUrl, CommandEventArgs e)
@@ -345,8 +345,7 @@ namespace Bobert
             try
             {
                 vClient = await client.GetService<AudioService>().Join(client.FindServers(serverName).FirstOrDefault().FindChannels(channelName, ChannelType.Voice, true).FirstOrDefault());
-
-                await e.Channel.SendMessage(pathOrUrl);
+                
                 procFFMPEG = Process.Start(new ProcessStartInfo
                 { //FFmpeg requires us to spawn a process and hook into its stdout, so we will create a Process
                     FileName = "ffmpeg",
