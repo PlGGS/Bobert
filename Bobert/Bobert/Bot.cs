@@ -27,7 +27,7 @@ namespace Bobert
         IAudioClient vClient;
         Process procFFMPEG;
         static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
-        static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase) + "log.txt";
+        static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6) + "\\log.txt";
         string audioQuery = "";
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
@@ -70,7 +70,12 @@ namespace Bobert
             });
 
             client.Log.Message += (s, e) => Log(s, e);
-            
+
+            void Log(object sender, LogMessageEventArgs e)
+            {
+                File.AppendAllText(logFileLocation, $"[{e.Severity}] | {e.Source}: {e.Message}");
+            }
+
             cmds = client.GetService<CommandService>();
             
             cmds.CreateCommand("help")
@@ -128,7 +133,7 @@ namespace Bobert
                         .Alias(new string[] { "pl", "p" })
                         .Description("Plays a file's audio from Pinhead's DropBox directory.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(async e =>
+                        .Do( e =>
                         {
                             if (audioPlaying == false)
                             {
@@ -146,7 +151,7 @@ namespace Bobert
                         .Alias(new string[] { "l" })
                         .Description("Loops a file's audio from Pinhead's DropBox directory until someone uses the /stop command.")
                         .Parameter("fileName", ParameterType.Required)
-                        .Do(async e =>
+                        .Do( e =>
                         {
                             loop = true;
                             audioQuery = e.GetArg("fileName");
@@ -300,17 +305,6 @@ namespace Bobert
                     fileNames[i] = fileNames[i].Substring(0, fileNames[i].Length - 4);
                 }
             }
-        }
-
-        private void Log(object sender, LogMessageEventArgs e)
-        {
-            if (!File.Exists(logFileLocation))
-            {
-                File.Create(logFileLocation);
-            }
-
-            StreamWriter logger = new StreamWriter(logFileLocation);
-            logger.WriteLine($"[{e.Severity}] | {e.Source}: {e.Message}");
         }
 
         public async void SendAudio(string pathOrUrl, CommandEventArgs e)
