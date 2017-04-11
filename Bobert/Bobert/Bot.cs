@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using Discord;
 using Discord.Commands;
 using Discord.Audio;
@@ -54,6 +53,15 @@ namespace Bobert
             {
                 input.LogLevel = LogSeverity.Info;
                 SetArrayValues();
+
+                if (File.ReadAllText(logFileLocation) == "")
+                {
+                    File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                }
+                else
+                {
+                    File.AppendAllText(logFileLocation, $"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                }
             });
 
             client.UsingCommands(input =>
@@ -73,12 +81,12 @@ namespace Bobert
 
             void LogBot(object sender, LogMessageEventArgs e)
             {
-                File.AppendAllText(logFileLocation, $"[{e.Severity}] | {e.Source}: {e.Message}");
+                File.AppendAllText(logFileLocation, $"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
             }
 
             void LogChat(object sender, MessageEventArgs e)
             {
-                File.AppendAllText(logFileLocation, $"{e.Channel} | {e.User.Name}: {e.Message}");
+                File.AppendAllText(logFileLocation, $"\n[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}");
             }
 
             cmds = client.GetService<CommandService>();
@@ -338,7 +346,7 @@ namespace Bobert
                 {
                     byteCount = procFFMPEG.StandardOutput.BaseStream //Access the underlying MemoryStream from the stdout of FFmpeg
                             .Read(buffer, 0, blockSize); //Read stdout into the buffer
-
+                    
                     if (byteCount == 0) //FFmpeg did not output anything
                         break; //Break out of the while(true) loop, since there was nothing to read.
 
