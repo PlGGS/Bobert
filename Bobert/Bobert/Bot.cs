@@ -88,11 +88,14 @@ namespace Bobert
                         .Do(async (e) =>
             {
                 await e.Channel.SendMessage("Commands:");
+                string tmpCmds = "";
 
-                foreach (string cmd in commands)
+                for (int i = 0; i < commands.Length; i++)
                 {
-                    await e.Channel.SendMessage(cmd);
+                    tmpCmds += $"- {commands[i]}\n";
                 }
+
+                await e.Channel.SendMessage(tmpCmds);
             });
 
             cmds.CreateCommand("listFiles")
@@ -107,7 +110,7 @@ namespace Bobert
                 {
                     if (!fileNames[i].Contains(audioPath))
                     {
-                        tmpList += "- " + fileNames[i] + "\n";
+                        tmpList += $"- {fileNames[i]}\n";
                     }
                 }
 
@@ -235,7 +238,7 @@ namespace Bobert
 
         private static void BeginLog()
         {
-            if (File.Exists(logFileLocation))
+            if (File.Exists(logFileLocation) && File.ReadAllText(logFileLocation) != "")
             {
                 File.AppendAllText(logFileLocation, $"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
             }
