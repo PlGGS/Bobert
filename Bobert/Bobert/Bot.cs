@@ -53,15 +53,7 @@ namespace Bobert
             {
                 input.LogLevel = LogSeverity.Info;
                 SetArrayValues();
-
-                if (File.ReadAllText(logFileLocation) == "")
-                {
-                    File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
-                }
-                else
-                {
-                    File.AppendAllText(logFileLocation, $"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
-                }
+                BeginLog();
             });
 
             client.UsingCommands(input =>
@@ -239,6 +231,23 @@ namespace Bobert
                         });
 
             ConnectBot();
+        }
+
+        private static void BeginLog()
+        {
+            if (File.Exists(logFileLocation))
+            {
+                File.AppendAllText(logFileLocation, $"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+            }
+            else if (!File.Exists(logFileLocation))
+            {
+                File.Create(logFileLocation);
+                File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+            }
+            else if (File.ReadAllText(logFileLocation) == "")
+            {
+                File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+            }
         }
 
         private async void PlayAudio(CommandEventArgs e)
