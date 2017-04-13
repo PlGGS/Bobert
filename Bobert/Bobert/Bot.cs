@@ -25,7 +25,8 @@ namespace Bobert
         string channelName = "";
         IAudioClient vClient;
         Process procFFMPEG;
-        static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        //static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        static string audioPath = @"C:\Users\bbor0422\Dropbox\Public\Audio\";
         static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6) + "\\log.txt";
         string audioQuery = "";
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
@@ -44,7 +45,7 @@ namespace Bobert
         string currentAudio = "";
         List<string> queue = new List<string>(); //TODO add audioQueue
         TicTacToe game;
-        Timer timReady = new Timer(30000);
+        System.Timers.Timer timReady = new System.Timers.Timer(30000);
         bool gameInProgress = false;
 
         public Bot()
@@ -52,7 +53,7 @@ namespace Bobert
             client = new DiscordClient(input =>
             {
                 input.LogLevel = LogSeverity.Info;
-                SetArrayValues();
+                //SetArrayValues();
                 BeginLog();
             });
 
@@ -73,12 +74,31 @@ namespace Bobert
 
             void LogBot(object sender, LogMessageEventArgs e)
             {
-                File.AppendAllText(logFileLocation, $"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
+                if (e.Message.Contains("Gateway: Connected") || e.Message.Contains("GUILD_AVAILABLE"))
+                {
+                    if (!File.ReadLines(logFileLocation).Reverse().Take(1).ToString().Contains("GUILD_AVAILABLE"))
+                    {
+                        using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                        {
+                            sw.Write($"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                    {
+                        sw.Write($"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
+                    }
+                }
             }
 
             void LogChat(object sender, MessageEventArgs e)
             {
-                File.AppendAllText(logFileLocation, $"\n[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}");
+                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                {
+                    sw.Write($"\n[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}");
+                }
             }
 
             cmds = client.GetService<CommandService>();
@@ -240,16 +260,26 @@ namespace Bobert
         {
             if (File.Exists(logFileLocation) && File.ReadAllText(logFileLocation) != "")
             {
-                File.AppendAllText(logFileLocation, $"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                {
+                    sw.Write($"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                }
             }
             else if (!File.Exists(logFileLocation))
             {
-                File.Create(logFileLocation);
-                File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                File.Create(logFileLocation).Close();
+
+                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                {
+                    sw.Write($"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                }
             }
             else if (File.ReadAllText(logFileLocation) == "")
             {
-                File.AppendAllText(logFileLocation, $"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                {
+                    sw.Write($"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
+                }
             }
         }
 
