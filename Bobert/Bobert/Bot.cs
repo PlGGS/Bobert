@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Timers;
+using System.Threading.Tasks;
 
 namespace Bobert
 {
@@ -53,7 +54,7 @@ namespace Bobert
             client = new DiscordClient(input =>
             {
                 input.LogLevel = LogSeverity.Info;
-                //SetArrayValues();
+                SetArrayValues();
                 BeginLog();
             });
 
@@ -69,35 +70,28 @@ namespace Bobert
                 x.Channels = 2;
             });
 
-            client.Log.Message += (s, e) => LogBot(s, e);
-            client.MessageReceived += (s, e) => LogChat(s, e);
-
-            void LogBot(object sender, LogMessageEventArgs e)
+            client.Log.Message += async (s, e) => await LogBot(s, e);
+            client.MessageReceived += async (s, e) => await LogChat(s, e);
+            
+            async Task LogBot(object sender, LogMessageEventArgs e)
             {
-                if (e.Message.Contains("Gateway: Connected") || e.Message.Contains("GUILD_AVAILABLE"))
+                //TODO check if adding a using encased read here and passing a string to the if statement fixes the problem
+                if (!File.ReadLines(logFileLocation).Reverse().Take(1).ToString().Contains("<<< Bobert the Incredible Bot!") && !e.Message.Contains("GUILD_AVAILABLE"))
                 {
-                    if (!File.ReadLines(logFileLocation).Reverse().Take(1).ToString().Contains("GUILD_AVAILABLE"))
+                    using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.Write))
+                    using (BinaryWriter br = new BinaryWriter(fs))
                     {
-                        using (StreamWriter sw = new StreamWriter(logFileLocation, true))
-                        {
-                            sw.Write($"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    using (StreamWriter sw = new StreamWriter(logFileLocation, true))
-                    {
-                        sw.Write($"\n[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
+                        br.Write($"[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}\n");
                     }
                 }
             }
 
-            void LogChat(object sender, MessageEventArgs e)
+            async Task LogChat(object sender, MessageEventArgs e)
             {
-                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
+                using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.Write))
+                using (BinaryWriter br = new BinaryWriter(fs))
                 {
-                    sw.Write($"\n[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}");
+                    br.Write($"[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}\n");
                 }
             }
 
@@ -258,28 +252,10 @@ namespace Bobert
 
         private static void BeginLog()
         {
-            if (File.Exists(logFileLocation) && File.ReadAllText(logFileLocation) != "")
+            using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.Write))
+            using (BinaryWriter br = new BinaryWriter(fs))
             {
-                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
-                {
-                    sw.Write($"\n  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
-                }
-            }
-            else if (!File.Exists(logFileLocation))
-            {
-                File.Create(logFileLocation).Close();
-
-                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
-                {
-                    sw.Write($"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
-                }
-            }
-            else if (File.ReadAllText(logFileLocation) == "")
-            {
-                using (StreamWriter sw = new StreamWriter(logFileLocation, true))
-                {
-                    sw.Write($"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>");
-                }
+                br.Write($"  <<< Bobert the Incredible Bot! | {DateTime.UtcNow} >>>\n");
             }
         }
 
