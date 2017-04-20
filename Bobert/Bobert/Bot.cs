@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Globalization;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Timers;
 using System.Threading.Tasks;
@@ -28,7 +27,8 @@ namespace Bobert
         Process procFFMPEG;
         //static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
         static string audioPath = @"C:\Users\bbor0422\Dropbox\Public\Audio\";
-        static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6) + "\\log.txt";
+        //static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6) + "\\log.txt";
+        static string logFileLocation = "C:\\Users\\bbor0422\\Desktop\\log.txt";
         string audioQuery = "";
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
@@ -72,26 +72,44 @@ namespace Bobert
 
             client.Log.Message += async (s, e) => await LogBot(s, e);
             client.MessageReceived += async (s, e) => await LogChat(s, e);
-            
+
             async Task LogBot(object sender, LogMessageEventArgs e)
             {
                 //TODO check if adding a using encased read here and passing a string to the if statement fixes the problem
-                if (!File.ReadLines(logFileLocation).Reverse().Take(1).ToString().Contains("<<< Bobert the Incredible Bot!") && !e.Message.Contains("GUILD_AVAILABLE"))
+                string lastLine = "";
+
+                using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                using (StreamReader sr = new StreamReader(fs))
                 {
-                    using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.Write))
-                    using (BinaryWriter br = new BinaryWriter(fs))
+                    while (sr.EndOfStream == false)
                     {
-                        br.Write($"[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}\n");
+                        lastLine = sr.ReadLine();
+                    }
+
+                    if (!lastLine.Contains("<<< Bobert the Incredible Bot!") && !e.Message.Contains("GUILD_AVAILABLE"))
+                    {
+                        using (StreamWriter sw = new StreamWriter(fs))
+                        {
+                            await sw.WriteLineAsync($"[{DateTime.UtcNow}] | [{e.Severity}] | {e.Source}: {e.Message}");
+                        }
                     }
                 }
             }
 
             async Task LogChat(object sender, MessageEventArgs e)
             {
-                using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.Write))
-                using (BinaryWriter br = new BinaryWriter(fs))
+                string currentLogFileText = "";
+
+                using (FileStream fs = new FileStream(logFileLocation, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                using (StreamWriter sw = new StreamWriter(fs))
+                using (StreamReader sr = new StreamReader(fs))
                 {
-                    br.Write($"[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}\n");
+                    while (sr.EndOfStream == false)
+                    {
+                        currentLogFileText += sr.ReadLine();
+                    }
+
+                    await sw.WriteLineAsync($"{currentLogFileText}[{DateTime.UtcNow}] | [{e.Channel}] | {e.Message}");
                 }
             }
 
