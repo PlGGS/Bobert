@@ -25,10 +25,10 @@ namespace Bobert
         string channelName = "";
         IAudioClient vClient;
         Process procFFMPEG;
-        //static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
-        static string audioPath = @"C:\Users\bbor0422\Dropbox\Public\Audio\";
+        static string audioPath = @"C:\Pinhead\Dropbox\Public\Audio\";
+        //static string audioPath = @"C:\Users\bbor0422\Dropbox\Public\Audio\";
         //static string logFileLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6) + "\\log.txt";
-        static string logFileLocation = "C:\\Users\\bbor0422\\Desktop\\log.txt";
+        static string logFileLocation = "C:\\Users\\Blake Boris\\Desktop\\log.txt";
         string audioQuery = "";
         string[] allFiles = Directory.GetFiles(audioPath); //Full path to files with name and file type
         string[] fileNames = Directory.GetFiles(audioPath); //file name
@@ -44,6 +44,8 @@ namespace Bobert
         bool audioPlaying = false;
         bool loop = false;
         string currentAudio = "";
+        string currentAudioPlayer = "";
+        sbyte skipVoteCount = 0;
         List<string> queue = new List<string>(); //TODO add audioQueue
         TicTacToe game;
         System.Timers.Timer timReady = new System.Timers.Timer(30000);
@@ -70,8 +72,8 @@ namespace Bobert
                 x.Channels = 2;
             });
 
-            client.Log.Message += async (s, e) => await LogBot(s, e);
-            client.MessageReceived += async (s, e) => await LogChat(s, e);
+            //client.Log.Message += async (s, e) => await LogBot(s, e);
+            //client.MessageReceived += async (s, e) => await LogChat(s, e);
 
             async Task LogBot(object sender, LogMessageEventArgs e)
             {
@@ -183,7 +185,25 @@ namespace Bobert
                             }
                             else
                             {
-                                e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop the current audio before playing another song");
+                                if (e.User.Name == currentAudioPlayer)
+                                {
+                                    e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop your current audio before playing another song");
+                                }
+                                else
+                                {
+                                    if (CurrentUserCountWithBotCheck(e) == 2)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you must vote to stop the current audio before you can play something else");
+                                    }
+                                    else if (CurrentUserCountWithBotCheck(e) == 3)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you and 1 other person must vote to stop the current audio before you can play something else");
+                                    }
+                                    else if (CurrentUserCountWithBotCheck(e) <= 4)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you and 2 others must vote to stop the current audio before you can play something else");
+                                    }
+                                }
                             }
                         });
 
@@ -193,30 +213,78 @@ namespace Bobert
                         .Parameter("fileName", ParameterType.Required)
                         .Do( e =>
                         {
-                            loop = true;
-                            audioQuery = e.GetArg("fileName");
-                            PlayAudio(e);
+                            if (audioPlaying == false)
+                            {
+                                loop = true;
+                                audioQuery = e.GetArg("fileName");
+                                PlayAudio(e);
+                            }
+                            else
+                            {
+                                if (e.User.Name == currentAudioPlayer)
+                                {
+                                    e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop your current audio before playing another song");
+                                }
+                                else
+                                {
+                                    if (CurrentUserCountWithBotCheck(e) == 2)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you must vote to stop the current audio before you can play something else");
+                                    }
+                                    else if (CurrentUserCountWithBotCheck(e) == 3)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you and 1 other person must vote to stop the current audio before you can play something else");
+                                    }
+                                    else if (CurrentUserCountWithBotCheck(e) <= 4)
+                                    {
+                                        e.Channel.SendMessage($"Sorry, {e.User.Mention}, you and 2 others must vote to stop the current audio before you can play something else");
+                                    }
+                                }
+                            }
                         });
 
             cmds.CreateCommand("stop").Alias(new string[] { "skip" })
                         .Do(async (e) =>
             {
-                await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
-                if (audioPlaying && audioQuery != "random")
+                //await e.Channel.SendMessage("audioPlaying: " + audioPlaying + " | " + "audioQuery: " + audioQuery);
+                if (audioPlaying)
                 {
-                    await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
-                    audioPlaying = false;
-                    loop = false;
-                }
-                else if (audioPlaying && audioQuery == "random")
-                {
-                    await e.Channel.SendMessage($"{e.User.Mention} stopped the random playback of {fileNames[rnd]}");
-                    audioPlaying = false;
-                    loop = false;
+                    if (e.User.Name == currentAudioPlayer)
+                    {
+                        await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
+                        audioPlaying = false;
+                        loop = false;
+                    }
+                    else
+                    {
+                        skipVoteCount += 1;
+                        if (CurrentUserCountWithBotCheck(e) <= 4)
+                        {
+                            await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/{CurrentUserCountWithBotCheck(e) - 1})");
+                            if (skipVoteCount == CurrentUserCountWithBotCheck(e) - 1)
+                            {
+                                await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                skipVoteCount = 0;
+                                audioPlaying = false;
+                                loop = false;
+                            }
+                        }
+                        else
+                        {
+                            await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/3)");
+                            if (skipVoteCount == 3)
+                            {
+                                await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                skipVoteCount = 0;
+                                audioPlaying = false;
+                                loop = false;
+                            }
+                        }
+                    }
                 }
                 else
                 {
-                    await e.Channel.SendFile($"{e.User.Mention} tried to stop current audio. Nothing was playing...");
+                    await e.Channel.SendMessage($"{e.User.Mention} tried to stop the current audio. Nothing was playing... Wow.");
                 }
             });
 
@@ -295,6 +363,7 @@ namespace Bobert
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
+                    currentAudioPlayer = e.User.Name;
                     await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
                     SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
@@ -302,6 +371,7 @@ namespace Bobert
                 {
                     audioPlaying = true;
                     currentAudio = audioQuery;
+                    currentAudioPlayer = e.User.Name;
                     await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
@@ -335,6 +405,18 @@ namespace Bobert
         private void ConnectBot()
         {
             client.ExecuteAndWait(async () => { await client.Connect("MjcxNjk3OTA1NzIxNTQwNjA5.C2KYcA.wDKEh-OWHTw0XazldDs_dYniMSA", TokenType.Bot); });
+        }
+
+        private int CurrentUserCountWithBotCheck (CommandEventArgs e)
+        {
+            if (audioPlaying)
+            {
+                return e.Server.UserCount - 1;
+            }
+            else
+            {
+                return e.Server.UserCount;
+            }
         }
 
         private void SetArrayValues()
