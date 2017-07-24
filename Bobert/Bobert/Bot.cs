@@ -253,34 +253,59 @@ namespace Bobert
                     if (e.User.Name == currentAudioPlayer)
                     {
                         await e.Channel.SendMessage($"{e.User.Mention} stopped: {currentAudio}");
+                        skipVoteCount = 0;
+                        voters.Clear();
                         audioPlaying = false;
                         loop = false;
                     }
                     else
                     {
-                        skipVoteCount += 1;
-                        if (CurrentUserCountWithBotCheck(e) <= 4)
+                        if (!UserVoted())
                         {
-                            await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/{CurrentUserCountWithBotCheck(e) - 1})");
-                            if (skipVoteCount == CurrentUserCountWithBotCheck(e) - 1)
+                            voters.Add(e.User.Name);
+                            skipVoteCount += 1;
+                            if (CurrentUserCountWithBotCheck(e) <= 4)
                             {
-                                await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
-                                skipVoteCount = 0;
-                                audioPlaying = false;
-                                loop = false;
+                                await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/{CurrentUserCountWithBotCheck(e) - 1})");
+                                if (skipVoteCount == CurrentUserCountWithBotCheck(e) - 1)
+                                {
+                                    await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                    skipVoteCount = 0;
+                                    voters.Clear();
+                                    audioPlaying = false;
+                                    loop = false;
+                                }
+                            }
+                            else
+                            {
+                                await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/3)");
+                                if (skipVoteCount == 3)
+                                {
+                                    await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                    skipVoteCount = 0;
+                                    voters.Clear();
+                                    audioPlaying = false;
+                                    loop = false;
+                                }
                             }
                         }
                         else
                         {
-                            await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/3)");
-                            if (skipVoteCount == 3)
+                            await e.Channel.SendMessage($"{e.User.Mention} voted again... Come on, man. Votes only count once!");
+                        }
+                    }
+
+                    bool UserVoted()
+                    {
+                        foreach (string voter in voters)
+                        {
+                            if (e.User.Name == voter)
                             {
-                                await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
-                                skipVoteCount = 0;
-                                audioPlaying = false;
-                                loop = false;
+                                return true;
                             }
                         }
+
+                        return false;
                     }
                 }
                 else
