@@ -45,6 +45,7 @@ namespace Bobert
         bool loop = false;
         string currentAudio = "";
         string currentAudioPlayer = "";
+        string currentAudioChannel = "";
         sbyte skipVoteCount = 0;
         List<string> voters = new List<string>();
         List<string> queue = new List<string>(); //TODO add audioQueue
@@ -260,38 +261,45 @@ namespace Bobert
                     }
                     else
                     {
-                        if (!UserVoted())
+                        if (e.User.VoiceChannel.Name == currentAudioChannel)
                         {
-                            voters.Add(e.User.Name);
-                            skipVoteCount += 1;
-                            if (CurrentUserCountWithBotCheck(e) <= 4)
+                            if (!UserVoted())
                             {
-                                await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/{CurrentUserCountWithBotCheck(e) - 1})");
-                                if (skipVoteCount == CurrentUserCountWithBotCheck(e) - 1)
+                                voters.Add(e.User.Name);
+                                skipVoteCount += 1;
+                                if (CurrentUserCountWithBotCheck(e) <= 4)
                                 {
-                                    await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
-                                    skipVoteCount = 0;
-                                    voters.Clear();
-                                    audioPlaying = false;
-                                    loop = false;
+                                    await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/{CurrentUserCountWithBotCheck(e) - 1})");
+                                    if (skipVoteCount == CurrentUserCountWithBotCheck(e) - 1)
+                                    {
+                                        await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                        skipVoteCount = 0;
+                                        voters.Clear();
+                                        audioPlaying = false;
+                                        loop = false;
+                                    }
+                                }
+                                else
+                                {
+                                    await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/3)");
+                                    if (skipVoteCount == 3)
+                                    {
+                                        await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
+                                        skipVoteCount = 0;
+                                        voters.Clear();
+                                        audioPlaying = false;
+                                        loop = false;
+                                    }
                                 }
                             }
                             else
                             {
-                                await e.Channel.SendMessage($"{e.User.Mention} voted to stop: {currentAudio} ({skipVoteCount}/3)");
-                                if (skipVoteCount == 3)
-                                {
-                                    await e.Channel.SendMessage($"Vote passed! Stopped: {currentAudio}");
-                                    skipVoteCount = 0;
-                                    voters.Clear();
-                                    audioPlaying = false;
-                                    loop = false;
-                                }
+                                await e.Channel.SendMessage($"{e.User.Mention} voted again... Come on, man. Votes only count once!");
                             }
                         }
                         else
                         {
-                            await e.Channel.SendMessage($"{e.User.Mention} voted again... Come on, man. Votes only count once!");
+                            await e.Channel.SendMessage($"{e.User.Mention}, please join the correct audio channel before attempting to stop audio playback");
                         }
                     }
 
@@ -390,6 +398,7 @@ namespace Bobert
                     audioPlaying = true;
                     currentAudio = audioQuery;
                     currentAudioPlayer = e.User.Name;
+                    currentAudioChannel = e.User.VoiceChannel.Name;
                     await e.Channel.SendMessage($"{e.User.Mention} played: {audioQuery}");
                     SendAudio(audioPath + audioQuery + fileTypes[fileTypeIndex], e);
                 }
@@ -398,6 +407,7 @@ namespace Bobert
                     audioPlaying = true;
                     currentAudio = audioQuery;
                     currentAudioPlayer = e.User.Name;
+                    currentAudioChannel = e.User.VoiceChannel.Name;
                     await e.Channel.SendMessage($"{e.User.Mention} played a random audio file ({fileNames[rnd]})");
                     SendAudio(audioPath + fileNames[rnd] + fileTypes[rnd], e);
                 }
