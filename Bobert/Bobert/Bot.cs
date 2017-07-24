@@ -46,6 +46,7 @@ namespace Bobert
         string currentAudio = "";
         string currentAudioPlayer = "";
         sbyte skipVoteCount = 0;
+        List<string> voters = new List<string>();
         List<string> queue = new List<string>(); //TODO add audioQueue
         TicTacToe game;
         System.Timers.Timer timReady = new System.Timers.Timer(30000);
@@ -187,7 +188,7 @@ namespace Bobert
                             {
                                 if (e.User.Name == currentAudioPlayer)
                                 {
-                                    e.Channel.SendMessage($"Sorry {e.User.Mention}, You have to stop your current audio before playing another song");
+                                    e.Channel.SendMessage($"Sorry, {e.User.Mention}, You have to stop your current audio before playing another song");
                                 }
                                 else
                                 {
@@ -411,11 +412,11 @@ namespace Bobert
         {
             if (audioPlaying)
             {
-                return e.Server.UserCount - 1;
+                return e.User.VoiceChannel.Users.Count() - 1;
             }
             else
             {
-                return e.Server.UserCount;
+                return e.User.VoiceChannel.Users.Count();
             }
         }
 
